@@ -953,22 +953,6 @@
         [
           "controller",
           {
-            "controllerName": "motorTorqueControl",
-            "tractionControl": "default",
-            "yawControl": "default"
-          }
-        ],
-        [
-          "controller",
-          {
-            "controllerName": "brakeControl",
-            "tractionControl": "default",
-            "yawControl": "default"
-          }
-        ],
-        [
-          "controller",
-          {
             "controllerName": "spoiler",
             "spoilerLow": 0,
             "spoilerNormal": 1
@@ -1013,6 +997,25 @@
                 "modeName": "ELECTRIC",
                 "modeColor": "#19A974"
               }
+            ],
+            [
+              "controller",
+              {
+                "controllerName": "motorTorqueControl",
+                "tractionControl.wheelGroupSettings.mainEngine.slipThreshold": "default",
+                "tractionControl.wheelGroupSettings.mainEngine.minimumThrottleLimit": "default",
+                "yawControl.slipAngleThreshold": "default",
+                "yawControl.yawAvThreshold": "default"
+              }
+            ],
+            [
+              "controller",
+              {
+                "controllerName": "brakeControl",
+                "tractionControl.wheelGroupSettings.mainEngine.slipThreshold": "default",
+                "yawControl.slipAngleThreshold": "default",
+                "yawControl.yawAvThreshold": "default"
+              }
             ]
           ]
         },
@@ -1052,6 +1055,25 @@
                 "controllerName": "gauge",
                 "modeName": "HYBRID",
                 "modeColor": "#1F7AE0"
+              }
+            ],
+            [
+              "controller",
+              {
+                "controllerName": "motorTorqueControl",
+                "tractionControl.wheelGroupSettings.mainEngine.slipThreshold": "default",
+                "tractionControl.wheelGroupSettings.mainEngine.minimumThrottleLimit": "default",
+                "yawControl.slipAngleThreshold": "default",
+                "yawControl.yawAvThreshold": "default"
+              }
+            ],
+            [
+              "controller",
+              {
+                "controllerName": "brakeControl",
+                "tractionControl.wheelGroupSettings.mainEngine.slipThreshold": "default",
+                "yawControl.slipAngleThreshold": "default",
+                "yawControl.yawAvThreshold": "default"
               }
             ]
           ]
@@ -1106,6 +1128,25 @@
               {
                 "controllerName": "adaptiveRearDamper",
                 "damperMode": "hard"
+              }
+            ],
+            [
+              "controller",
+              {
+                "controllerName": "motorTorqueControl",
+                "tractionControl.wheelGroupSettings.mainEngine.slipThreshold": 0.3,
+                "tractionControl.wheelGroupSettings.mainEngine.minimumThrottleLimit": "default",
+                "yawControl.slipAngleThreshold": "default",
+                "yawControl.yawAvThreshold": "default"
+              }
+            ],
+            [
+              "controller",
+              {
+                "controllerName": "brakeControl",
+                "tractionControl.wheelGroupSettings.mainEngine.slipThreshold": 0.2,
+                "yawControl.slipAngleThreshold": 0.2,
+                "yawControl.yawAvThreshold": 0.6
               }
             ]
           ]

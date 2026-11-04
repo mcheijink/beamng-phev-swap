@@ -247,7 +247,13 @@ end
 local function updateBatteryLimits(device, dt)
   local ambient = powertrain.currentEnvTemperatureCelsius or 20
   if not device.batteryTemp then
-    device.batteryTemp = ambient + device.batteryStartOffset
+    -- the game's "start preheated" setting (the engine's own thermals read the same one): preheated, the pack starts at
+    -- batteryPreHeat; otherwise ambient + batteryStartOffset. A vehicle reset clears batteryTemp, so it is read again.
+    if settings.getValue("startThermalsPreHeated") then
+      device.batteryTemp = device.batteryPreHeat
+    else
+      device.batteryTemp = ambient + device.batteryStartOffset
+    end
   end
   if dt and dt > 0 then
     local t = device.batteryTemp
@@ -1645,7 +1651,7 @@ local function resetState(device, jbeamData)
   device.batteryRegenCoef = 1
   device.chargeIdleAV = 0
   device.batteryLossEnergy = 0
-  -- the pack starts at ambient + batteryStartOffset (set in the first update, when the ambient is known)
+  -- the pack start temperature is set in the first update (updateBatteryLimits: the ambient and the start-preheated setting)
   device.batteryTemp = nil
   device.dischargeLimitNow = device.batteryMaxDischargePower
   device.chargeLimitNow = device.batteryMaxChargePower
@@ -1787,6 +1793,7 @@ local function new(jbeamData)
     batteryChillerStart = jbeamData.batteryChillerStartC or 32,
     batteryChillerFull = jbeamData.batteryChillerFullC or 38,
     batteryStartOffset = jbeamData.batteryStartOffsetC or 5,
+    batteryPreHeat = jbeamData.batteryPreHeatC or 20,
 
     -- K0 clutch
     k0LockTorque = jbeamData.k0LockTorque or 600,

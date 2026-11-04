@@ -614,7 +614,8 @@
       "batteryChillerKW": 3,
       "batteryChillerStartC": 32,
       "batteryChillerFullC": 38,
-      "batteryStartOffsetC": 5
+      "batteryStartOffsetC": 5,
+      "batteryPreHeatC": 20
     },
     "phev": {
       "topSpeedKmh": 222,
@@ -831,7 +832,8 @@
       "batteryChillerKW": 3,
       "batteryChillerStartC": 32,
       "batteryChillerFullC": 38,
-      "batteryStartOffsetC": 5
+      "batteryStartOffsetC": 5,
+      "batteryPreHeatC": 20
     },
     "phev": {
       "topSpeedKmh": 222,
@@ -1047,7 +1049,8 @@
       "batteryChillerKW": 3,
       "batteryChillerStartC": 32,
       "batteryChillerFullC": 38,
-      "batteryStartOffsetC": 5
+      "batteryStartOffsetC": 5,
+      "batteryPreHeatC": 20
     },
     "phev": {
       "topSpeedKmh": 222,
