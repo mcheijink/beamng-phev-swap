@@ -100,7 +100,8 @@
     "phev": {
       "evSpeedTaperKmh": 3,
       "evExitMarginKmh": 4,
-      "topSpeedBandKmh": 5,
+      "topSpeedHoldCoef": 0.75,
+      "topSpeedBandKmh": 2.5,
       "liftOffDelayHybrid": [
         [
           0,

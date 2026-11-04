@@ -1230,8 +1230,8 @@ local function updateGFX(dt)
   -- demand (in Boost the engine's spare capacity then tops up the battery). The engine reads the raw throttle,
   -- so its throttle factor is scaled with the same coefficient below.
   local rawPedal = pedal
-  local overLimit = speedKmh - (cfg.topSpeedKmh - cfg.topSpeedBandKmh)
-  local limitCoef = speedLimitSmoother:get(clampValue(1 - overLimit / cfg.topSpeedBandKmh, 0, 1), dt)
+  local overTop = math.abs(electrics.values.airspeed or 0) * 3.6 - cfg.topSpeedKmh
+  local limitCoef = speedLimitSmoother:get(clampValue(cfg.topSpeedHoldCoef - overTop / cfg.topSpeedBandKmh, 0, 1), dt)
   pedal = pedal * limitCoef
   speedLimitCoef = limitCoef
   electrics.values.phevSpeedLimitCoef = limitCoef
@@ -1511,9 +1511,11 @@ local function readConfig(jbeamData)
     warmUpTorqueCap = jbeamData.warmUpTorqueCap or {{20, 0.55}, {40, 0.55}, {50, 0.65}, {60, 0.75}, {65, 0.85}, {75, 0.9}, {80, 1.0}},
     -- Boost: most motor torque used to top the battery up from the engine's spare capacity (Nm)
     boostChargeTorque = jbeamData.boostChargeTorque or 40,
-    -- top speed (km/h) and the band below it over which the power is reduced
+    -- top speed (km/h, true speed), the power share the limiter allows at that speed (a car settles there when its drag takes
+    -- about that share of its full power) and the band (km/h) over which the share falls from 1 to 0
     topSpeedKmh = jbeamData.topSpeedKmh or 230,
-    topSpeedBandKmh = jbeamData.topSpeedBandKmh or 5,
+    topSpeedHoldCoef = jbeamData.topSpeedHoldCoef or 0.75,
+    topSpeedBandKmh = jbeamData.topSpeedBandKmh or 2.5,
     -- lift-off deceleration in Boost, including the drag of a coupled engine (measured on the real car: 0.3-0.4 m/s2 above road
     -- load with the engine coupled in overrun)
     coastDecelBoost = jbeamData.coastDecelBoost or 0.04,
