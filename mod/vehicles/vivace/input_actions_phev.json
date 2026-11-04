@@ -33,6 +33,6 @@
     "order": 1.5,
     "onDown": "controller.getControllerSafe('phev').toggleKickdown()",
     "title": "PHEV: kickdown on/off",
-    "desc": "Kickdown is full pedal (95 %+). Keyboard throttle always reaches it: switch it off here"
+    "desc": "Kickdown is full pedal (99 %). Keyboard throttle always reaches it: switch it off here"
   }
 }

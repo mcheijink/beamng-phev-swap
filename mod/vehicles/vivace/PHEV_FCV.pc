@@ -3,6 +3,7 @@
     "$headlightPitchComp": 0.4
   },
   "format": 2,
+  "mainPartName": "vivace",
   "model": "vivace",
   "parts": {
     "vivace_lettering": "vivace_lettering_e",
@@ -20,8 +21,6 @@
     "vivace_roofrack": "vivace_roofrack",
     "vivace_steer": "vivace_steer_paddles",
     "vivace_quarterpanels": "vivace_quarterpanels",
-    "vivace_engine_internals": "vivace_engine_internals",
-    "vivace_ESC": "vivace_ESC",
     "vivace_engine_ecu_i4_1.6": "phev_vivace_engine_ecu",
     "vivace_doorpanel_FR": "vivace_doorpanel_FR",
     "vivace_radiator": "vivace_radiator",
@@ -42,7 +41,6 @@
     "tire_R_17x7": "tire_R_215_45_17_sport",
     "vivace_mirror_R": "vivace_mirror_R",
     "vivace_doorglass_FL": "vivace_doorglass_FL",
-    "vivace_ABS": "vivace_ABS",
     "vivace_sideskirt_L": "vivace_sideskirt_L",
     "vivace_brake_F": "vivace_brake_F",
     "vivace_strut_F": "vivace_strut_F_adaptive",

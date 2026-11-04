@@ -156,7 +156,7 @@ angular.module('beamng.apps')
           d.charge = num(e.phevChargeFunction) > 0
           d.soc = Math.max(0, Math.min(100, num(e.phevSocUsable)))
           d.socRaw = num(e.phevSocRaw)
-          d.hold = Math.max(0, Math.min(100, num(e.boostHoldTarget)))
+          d.hold = Math.max(0, Math.min(100, num(e.phevHoldTarget)))
           d.socColor = d.soc < 10 ? '#d7263d' : (d.soc < 25 ? '#e0a21f' : '#19a974')
           d.usableKWh = num(e.phevBatteryUsableKWh)
           d.usableCapKWh = num(e.phevBatteryUsableCapKWh)

@@ -9,7 +9,7 @@ How a vehicle mod (a car that is not one of the game's own) uses the drivetrain 
 | Strategy controller `phev` | `lua/vehicle/controller/phev.lua` | Drive modes Electric / Hybrid / Boost, Charge mode, engine start and stop, torque split, regeneration, brake blending, brake lights from regeneration, B position, kickdown, optional brake torque vectoring |
 | Hybrid module device `phevModule` | `lua/vehicle/powertrain/phevModule.lua` | One powertrain device: K0 clutch, 85 kW motor, input shaft, battery accounting, engine start sequence, thermal model |
 | Shift logic `phevDct` | `lua/vehicle/controller/shiftLogic-phevDct.lua` | Modified copy of BeamNG's dual-clutch shift logic (bCDDL, header kept) |
-| Core parts | `vehicles/common/phev/phev_core.jbeam` | `phev_system` (module + strategy data), `phev_dct6` (gearbox ratios, shift map), `phev_battery_10`, `_13`, `_18` and `phev_battery_9_9` (battery cells; each has its own slot type `phev_cells_<kWh>`) |
+| Core parts | `vehicles/common/phev/phev_core.jbeam` | `phev_system` (module + strategy data), `phev_dct6` (gearbox ratios, shift map), `phev_battery_10`, `_13` and `_18` (battery cells; each has its own slot type `phev_cells_<kWh>`) |
 | Monitor app | `ui/modules/apps/PhevMonitor` | "Plug-in Hybrid Monitor", reads the `phev*` electrics, shows only on a car that publishes `phevMode` |
 
 `vehicles/common/` is loaded for every car, so a car mod does not have to ship the core parts. It only has to offer the slots that take them.
@@ -41,9 +41,9 @@ and the battery part offers
 
 | Slot name | Default part |
 |---|---|
-| `phev_battery` | `phev_battery_13` (or `phev_battery_9_9`) |
+| `phev_battery` | `phev_battery_13` (or `_10`, `_18`) |
 
-Write this slot row in the `slots2` format with `allowTypes` of the one cell type that fits the pack (`["phev_cells_13"]`, or `_10`, `_18`, `_9_9`): the slot name stays `phev_battery`, and a pack part cannot be combined with cells of another size. A host that offers several pack sizes ships one pack part per size, each with its own mass nodes (the vanilla ports do, see [PHEV-TUNING.md](PHEV-TUNING.md)).
+Write this slot row in the `slots2` format with `allowTypes` of the one cell type that fits the pack (`["phev_cells_13"]`, or `_10`, `_18`): the slot name stays `phev_battery`, and a pack part cannot be combined with cells of another size. A host that offers several pack sizes ships one pack part per size, each with its own mass nodes (the vanilla ports do, see [PHEV-TUNING.md](PHEV-TUNING.md)).
 
 Example (ETK port): `phev_etk_transmission_dct` offers `phev_system`, `phev_gearbox` and the car's own battery slot; `phev_etk_battery_10` / `_13` / `_18` offer the cells.
 

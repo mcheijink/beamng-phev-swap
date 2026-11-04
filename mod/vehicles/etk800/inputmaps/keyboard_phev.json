@@ -6,19 +6,19 @@
   "vidpid": "6F1D2B61",
   "bindings": [
     {
-      "control": "k",
+      "control": "g",
       "action": "phevToggleElectricMode"
     },
     {
-      "control": "j",
+      "control": "t",
       "action": "phevToggleBoostMode"
     },
     {
-      "control": "u",
+      "control": "k",
       "action": "phevToggleKickdown"
     },
     {
-      "control": "b",
+      "control": "u",
       "action": "phevToggleB"
     }
   ]

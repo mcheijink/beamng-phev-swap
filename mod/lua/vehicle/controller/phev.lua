@@ -362,7 +362,7 @@ local function updateRegenSlip(dt)
   -- ABS, traction or stability control intervening (the flags are booleans or numbers, depending on the system):
   -- the same cut, hold and gradual return. Cutting regeneration only in the frames with the flag set switched the
   -- motor between 0 and full regeneration (about -250 Nm) every 2-3 frames while ABS cycled, and each step shook
-  -- the driveline (flicker_cold, braking from 60 km/h with the engine coupled)
+  -- the driveline (braking from 60 km/h with the engine coupled)
   local e = electrics.values
   if flagOn(e.absActive) or flagOn(e.tcsActive) or flagOn(e.escActive) then
     slipping = true
@@ -554,7 +554,7 @@ local function interpolate(points, x)
   for i = 2, #points do
     if x <= points[i][1] then
       local x0, y0, x1, y1 = points[i - 1][1], points[i - 1][2], points[i][1], points[i][2]
-      return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+      return y0 + (y1 - y0) * (x - x0) / max(x1 - x0, 1e-9)
     end
   end
   return points[#points][2]
@@ -656,6 +656,9 @@ local function updateEngineRequest(dt, pedal, brake, speedKmh, shaftAV, isBoost)
   end
   local offPower = isBoost and kwBySpeed(cfg.boostOffPowerKW, speedKmh) or onPower * cfg.hybridOffPowerRatio
 
+  -- Charge mode "always charges" (as on the real car): below its target the engine runs and charges, also at a standstill and in P
+  local chargeWanted = chargeFunction and not isBoost and deficit > cfg.sustainBand
+
   local kickdown = kickdownActive
   -- lift-off with hysteresis on the filtered pedal (updatePedalState): a pedal hovering at the threshold no
   -- longer toggles between the lift-off and the driving rules
@@ -694,8 +697,6 @@ local function updateEngineRequest(dt, pedal, brake, speedKmh, shaftAV, isBoost)
   else
     standstillTimer = 0
   end
-  -- Charge mode "always charges" (as on the real car): below its target the engine runs and charges, also at a standstill and in P
-  local chargeWanted = chargeFunction and not isBoost and deficit > cfg.sustainBand
   local standstillCharge = not isBoost and standstillTimer > 0 and (deficit >= cfg.standstillChargeDeficit or chargeWanted)
   standstillChargeWanted = standstillCharge
   -- Lift-off stop delay by mode and road speed (measured on the real car): in Hybrid-like
@@ -1372,7 +1373,7 @@ local function updateGFX(dt)
   module.systemCapActive = true
 
   electrics.values.phevMode = mode
-  electrics.values.boostHoldTarget = (chargeFunction and cfg.chargeTarget or holdTarget) * 100
+  electrics.values.phevHoldTarget = (chargeFunction and cfg.chargeTarget or holdTarget) * 100
   electrics.values.phevChargeFunction = chargeFunction and 1 or 0
   electrics.values.phevEngineShare = engineShare
   electrics.values.phevWarmingUp = warmingUp and 1 or 0
@@ -1389,8 +1390,6 @@ local function readConfig(jbeamData)
   cfg = {
     evMaxSpeedKmh = jbeamData.evMaxSpeedKmh or 140,
     evSpeedTaperKmh = jbeamData.evSpeedTaperKmh or 3,
-    -- Electric is left for Hybrid this far above evMaxSpeedKmh (downhill)
-    evExitMarginKmh = jbeamData.evExitMarginKmh or 4,
     evMinUsableSoc = jbeamData.evMinUsableSoc or 0.0,
     -- no engine start while the 1.4's intake is under water (default on; false switches it off)
     hydrolockProtection = jbeamData.hydrolockProtection ~= false,
@@ -1505,7 +1504,6 @@ local function readConfig(jbeamData)
     regenSlipHoldTime = jbeamData.regenSlipHoldTime or 0.5,
     regenSlipRecoverTime = jbeamData.regenSlipRecoverTime or 1.0,
     vehicleMassKg = jbeamData.vehicleMassKg or 1800,
-    regenBrakeLightKW = jbeamData.regenBrakeLightKW or 15,
     -- brake lights from regenerative deceleration (m/s2, UN R13-H) and the emergency stop signal (UN R48)
     regenLightOnDecel = jbeamData.regenLightOnDecel or 1.3,
     regenLightOffDecel = jbeamData.regenLightOffDecel or 0.7,
@@ -1668,6 +1666,7 @@ local function init(jbeamData)
   speedLimitSmoother = newTemporalSmoothing(0.6, 0.6, nil, 1)
 
   water.block, water.timer = false, 0
+  deliveredEngineTorque, engineTorqueFiltered, kbdFloorTimer, kickdownActive = 0, nil, 0, false
   mode = MODE_HYBRID
   holdTarget = cfg.holdFloor
   chargeFunction = false
@@ -1697,7 +1696,7 @@ M.init = init
 M.reset = reset
 M.updateGFX = updateGFX
 M.updateWheelsIntermediate = updateWheelsIntermediate
--- brake torque vectoring on / off at run time (tests compare the grip plateau with and without it)
+-- brake torque vectoring on / off at run time (a switch for other controllers and the console)
 M.setTorqueVectoring = function(on) if cfg then cfg.tvEnabled = on and true or false end end
 M.toggleElectricMode = toggleElectricMode
 M.toggleBoostMode = toggleBoostMode

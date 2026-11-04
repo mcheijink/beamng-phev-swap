@@ -4,12 +4,6 @@ A plug-in hybrid drivetrain for five of the game's cars: a 1.4 litre turbo petro
 
 The drivetrain is calibrated on measurements of a real plug-in hybrid estate car: drive logs, the workshop manual and published data. Engine start and stop, the torque split, regeneration, brake blending and the warm-up all follow what that car does.
 
-![The hybrid configurations in the game](docs/images/overview.jpg)
-<!-- TODO: add docs/images/overview.jpg (all configurations side by side) -->
-
-![Plug-in Hybrid Monitor app](docs/images/monitor-app.jpg)
-<!-- TODO: add docs/images/monitor-app.jpg (the UI app during a drive) -->
-
 Mod id: `phev_swap_mcheijink` (zip name `phev_swap_mcheijink.zip`, unchanged between versions).
 
 ## Cars and configurations
@@ -29,7 +23,7 @@ The mod adds new configurations to vanilla cars. It uses their vanilla meshes; t
 - Three drive modes: Electric (engine off), Hybrid (the car decides) and Boost (engine and motor together, full system power).
 - Charge mode: in Hybrid the engine charges the battery while you drive or stand still.
 - Regeneration when you lift off and when you brake, blended with the friction brakes. B position for stronger lift-off regeneration.
-- Kickdown at full pedal. It can be switched off for keyboard throttle.
+- Kickdown at full pedal (99 %). It can be switched off for keyboard throttle.
 - Battery sizes of 10, 13 and 18 kWh in the parts selector, each with its own mass. The petrol tank is reduced for the battery (38 L at 13 kWh).
 - Brakes and springs are adjusted per car for the extra mass, so the car keeps its ride height and pedal feel (see [docs/PHEV-TUNING.md](docs/PHEV-TUNING.md)).
 - Brake torque vectoring on the inner front wheel (rear-wheel-drive configurations have it off by default).
@@ -60,10 +54,10 @@ Change them in Options > Controls, category vehicle.
 
 | Key | Action |
 |---|---|
-| K | Electric mode on / off |
-| J | Boost mode on / off |
-| B | B position (stronger lift-off regeneration) |
-| U | Kickdown on / off |
+| G | Electric mode on / off |
+| T | Boost mode on / off |
+| U | B position (stronger lift-off regeneration) |
+| K | Kickdown on / off |
 | (none) | Next drive mode, Charge mode: bind them if you want them |
 
 ## The monitor app

@@ -80,7 +80,7 @@ local function motorDriveTorqueAt(device, av)
   end
   local taperStartAV = device.motorMaxAV - device.motorTaperAV
   if absAV > taperStartAV then
-    torque = torque * (device.motorMaxAV - absAV) / device.motorTaperAV
+    torque = torque * (device.motorMaxAV - absAV) / max(device.motorTaperAV, 1e-3)
   end
   return torque
 end
@@ -95,7 +95,7 @@ end
 --   * field weakening: the extra d-axis current above motorFieldWeakRPM
 -- The no-load spin loss (magnet iron loss and bearings) is a drag on the shaft (motorSpinLoss), paid by whatever turns
 -- the shaft, as with the inverter idle. The constants are fitted so that the combined map has the shape of published
--- maps of this class (ORNL benchmarks, e.g. 2010 Prius ORNL/TM-2010/253): about 93-95 % at 50-200 Nm and
+-- maps of this class (ORNL benchmarks, e.g. report ORNL/TM-2010/253): about 93-95 % at 50-200 Nm and
 -- 2,000-5,000 rpm, about 85-88 % at light load or at full torque around 1,000 rpm, 70-75 % at full torque near standstill.
 local function motorLoss(device, torque, av)
   local t = abs(torque)
@@ -160,7 +160,7 @@ local function motorRegenTorqueAt(device, av)
   -- fade regen out towards low shaft speed so the shaft never gets dragged below idle
   local fadeEndAV = device.regenMinAV * 1.5
   if absAV < fadeEndAV then
-    torque = torque * (absAV - device.regenMinAV) / (fadeEndAV - device.regenMinAV)
+    torque = torque * (absAV - device.regenMinAV) / max(fadeEndAV - device.regenMinAV, 1e-3)
   end
   return torque
 end
@@ -229,8 +229,8 @@ end
 --   * pack temperature: one thermal mass (batteryHeatCapacity), heated by the internal-resistance loss, cooled to
 --     ambient through the housing (batteryPassiveUA), the low-temperature coolant circuit from batteryCoolStartC
 --     (batteryCoolantUA) and the refrigerant chiller (batteryChillerPower, ramped in from batteryChillerStartC to
---     batteryChillerFullC) while the system is on. Workshop manual: liquid-cooled pack with a heat exchanger in the A/C circuit
---     (VX63), operating range -28 to 60 C. The figures are assumed (no data from the maker).
+--     batteryChillerFullC) while the system is on. Workshop manual: liquid-cooled pack with a heat exchanger in the A/C circuit,
+--     operating range -28 to 60 C. The figures are assumed (no data from the maker).
 local function interpolatePoints(points, x)
   if x <= points[1][1] then
     return points[1][2]
@@ -320,7 +320,6 @@ local function updateTorque(device, dt)
   end
   -- seen by the combustion engine as its clutch load
   device.torqueDiff = k0Torque
-  device.k0SlipLoss = device.k0SlipLoss + abs(k0Torque * avDiff) * dt
 
   -- motor torque
   local motorTorque = 0
@@ -407,9 +406,9 @@ local function updateTorque(device, dt)
         local friction = ice.frictionTorque or 0
         -- the engine can come down only to zero combustion torque: the speed changes no faster than that allows
         -- (at least at a quarter of the nominal rate), so the motor doesn't have to absorb the rest
-        local floor = device.lastClutchLoad - device.syncMotorHold + friction
-        if floor > 0 then
-          rate = max(rate, min(-floor / (device.inertia + engineInertia), (targetAV - shaftAV) / (4 * max(device.syncTau, 0.002))))
+        local torqueFloor = device.lastClutchLoad - device.syncMotorHold + friction
+        if torqueFloor > 0 then
+          rate = max(rate, min(-torqueFloor / (device.inertia + engineInertia), (targetAV - shaftAV) / (4 * max(device.syncTau, 0.002))))
         end
         local wanted = device.lastClutchLoad + (device.inertia + engineInertia) * rate - device.syncMotorHold + friction
         device.syncIceLimit = max(wanted, 0)
@@ -424,7 +423,7 @@ local function updateTorque(device, dt)
       -- the torque it had when the shift began (drive, or regeneration while coasting) plus at most revMatchPower
       -- for the speed match. Before, the motor alone accelerated the coupled engine (its inertia and its drag in
       -- fuel cut) within syncTau: +200-330 Nm right after -120 to -320 Nm of regeneration, the motor swinging between
-      -- about -48 and +75 kW within 0.2 s (flicker_cold, coasting and braking downshifts 5-4 to 2-1).
+      -- about -48 and +75 kW within 0.2 s (coasting and braking downshifts 5-4 to 2-1 with the engine coupled).
       local blipAV = nil
       if device.syncDown and coupled then
         local extra = device.revMatchPower / max(abs(shaftAV), 50)
@@ -788,19 +787,8 @@ local function setupVisualLayout(device)
   end
 end
 
--- linear interpolation in a {{x, y}, ...} table, clamped at the ends
-local function interpolate(points, x)
-  if x <= points[1][1] then
-    return points[1][2]
-  end
-  for i = 2, #points do
-    if x <= points[i][1] then
-      local x0, y0, x1, y1 = points[i - 1][1], points[i - 1][2], points[i][1], points[i][2]
-      return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
-    end
-  end
-  return points[#points][2]
-end
+-- linear interpolation in a {{x, y}, ...} table, clamped at the ends (the guarded helper of the battery limits)
+local interpolate = interpolatePoints
 
 -- Engine temperatures. BeamNG's combustionEngineThermals heats the coolant together with a heavy engine block
 -- (168 kg of aluminium, tightly coupled to the coolant) and puts all of the engine's friction (25 Nm, about
@@ -909,6 +897,7 @@ local function updateFuelCalibration(device)
   local inv = ice.invBurnEfficiencyTable[floor(clampValue(ice.instantEngineLoad or 0, 0, 1) * 100)] or 1
   local bngRate = gross * av * inv / device.fuelEnergyDensity -- kg/s
   if bngRate <= 0 then
+    electrics.values.phevFuelCoef = 1
     return
   end
   local rpm = av * avToRPM
@@ -1058,7 +1047,7 @@ local function updateGFX(device, dt)
   electrics.values.phevCoolantC = ice.thermals and (ice.thermals.coolantTemperature or ice.thermals.oilTemperature) or 0
   electrics.values.phevIceThrottle = electrics.values[device.iceThrottleFactorName] or 0
 
-  -- power meter of the original mod's gauges (same scaling as its packCurrentPowerIntoValue.lua)
+  -- drives the Cherrier's vanilla power gauge (vivaceGauges.lua), same scaling
   local moving = (electrics.values.wheelspeed or 0) > 0.1
   local powerNorm = clampValue(motorPowerKW / 85, -1, 1)
   local meter = (powerNorm > 0 and powerNorm * 1.55 or powerNorm * 0.8) * (moving and 1 or 0)
@@ -1465,7 +1454,9 @@ local function validate(device)
   lookup.iceEngine = ice
 
   -- the real car is "ready" with the engine stopped: the 1.4 turbo spawns and resets with ignition on but not
-  -- running (at most ignition level 2), the strategy starts it through K0 when it is needed
+  -- running (at most ignition level 2), the strategy starts it through K0 when it is needed.
+  -- Ordering assumption: the engine reads this field in its reset, which has already run when validate is called, so
+  -- the output speeds are zeroed here for the first spawn; the module's own resetState reads electrics ignitionLevel.
   ice.spawnVehicleIgnitionLevel = math.min(ice.spawnVehicleIgnitionLevel or 0, 2)
   for i = 1, ice.activeOutputPortCount or 1 do
     local port = ice.activeOutputPorts and ice.activeOutputPorts[i] or 1
@@ -1586,7 +1577,6 @@ local function resetState(device, jbeamData)
   if device.parent and device.parent.deviceCategories then
     setIceSyncTarget(device, 0)
   end
-  device.k0SlipLoss = 0
   device.k0Torque = 0
   device.stateTimer = 0
   device.syncTimer = 0
@@ -1602,7 +1592,6 @@ local function resetState(device, jbeamData)
   device.throttleFactor = 1
   device.systemCapActive = true
   device.syncTargetRatio = nil
-  device.syncClutchTorque = 0
   device.syncTau = 0.02
   device.lastClutchLoad = 0
   device.syncWasActive = false
@@ -1688,7 +1677,6 @@ local function new(jbeamData)
     iceTcFactor = 1,
     throttle = 0,
     regenThrottle = 0,
-    syncClutchTorque = 0,
     syncTau = 0.02,
     lastClutchLoad = 0,
     -- coupled upshifts: the engine torque reduction of the inertia phase and its release ramp (Nm/s, Nm)

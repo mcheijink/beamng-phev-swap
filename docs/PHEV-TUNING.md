@@ -9,7 +9,7 @@ The tables below were generated from the shipped parts, so they match them. The 
 | Item | What the mod does |
 |---|---|
 | Battery | 10, 13 and 18 kWh parts per host body in the same slot; **13 kWh is the default of all seven configurations** |
-| Cell data | core parts `phev_battery_10`, `_13`, `_18` (and `_9_9`). Each has its own slot type `phev_cells_<kWh>`; the host's pack part allows exactly its own cells, so a pack and its cells cannot be mixed up. The slot name `phev_battery` is the same for all |
+| Cell data | core parts `phev_battery_10`, `_13` and `_18`. Each has its own slot type `phev_cells_<kWh>`; the host's pack part allows exactly its own cells, so a pack and its cells cannot be mixed up. The slot name `phev_battery` is the same for all |
 | Petrol tank | vanilla tank part kept; `mainTank.fuelCapacity` overridden by the battery part (38 L at 13 kWh) |
 | Brakes | `$brakestrength` default raised by the mass ratio |
 | Springs | parallel extra spring beams carry the extra load at the vanilla ride height |

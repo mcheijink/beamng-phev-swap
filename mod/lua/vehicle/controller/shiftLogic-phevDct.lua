@@ -500,7 +500,7 @@ local function phevUpdateLoad(dt)
   local pedalNow = clamp(electrics.values.throttle_input or p, 0, 1)
   local low = phevLoad.pedalLow or pedalNow
   phevLoad.pedalNow = pedalNow
-  -- (a falling pedal within about 0.15 s, so a single-frame dip is no lift: the test rig's step changes passed one
+  -- (a falling pedal within about 0.15 s, so a single-frame dip is no lift: a stepped pedal input passes one
   -- frame of 0, and 0 -> 0.90 counted as a press)
   local tau = pedalNow < low and 0.15 or dct.phevFirmPressTime
   low = low + (pedalNow - low) * min(1, dt / tau)
@@ -549,7 +549,7 @@ local function phevLoadShiftPoints(gearIndex, outAV)
   sharedFunctions.selectShiftPoints(gearIndex)
   local highUp, highDown = M.shiftBehavior.shiftUpAV, M.shiftBehavior.shiftDownAV
   -- full-load upshift at most phevFullLoadUpRPM: BeamNG calculates the full-load points from the system curve
-  -- (calculateOptimalLoadShiftPoints) and ignores highShiftUpRPM, which put them at 5,850-5,890 rpm (phev_full_accel)
+  -- (calculateOptimalLoadShiftPoints) and ignores highShiftUpRPM, which put them at 5,850-5,890 rpm in a full-throttle pull
   highUp = min(highUp, dct.phevFullLoadUpAV)
   sv.drivingAggression = aggression
   -- per drive mode: an offset on the light-load points (Hybrid / Boost parameter sets; Electric has its own points, see
@@ -621,11 +621,8 @@ end
 local function phevDownshiftAllowed(dt, engineAV)
   phevLoad.demandDown = false
   local pedalNow = phevLoad.pedalNow or 0
-  electrics.values.phevDownWhy = 0
   if not phevLoad.active or phevLoad.kickdown or engineAV < phevLoad.lowDownAV or engineAV >= M.shiftBehavior.shiftDownAV then
     phevLoad.downTimer = 0
-    -- why a downshift may happen (test rig column downWhy): 1 engine decoupled, 2 kickdown, 3 below the light-load point
-    electrics.values.phevDownWhy = not phevLoad.active and 1 or phevLoad.kickdown and 2 or engineAV < phevLoad.lowDownAV and 3 or 0
     return true
   end
   -- the raised point only counts while the driver asks for it: after a lift-off the low-passed pedal keeps the
@@ -648,7 +645,6 @@ local function phevDownshiftAllowed(dt, engineAV)
   end
   phevLoad.downTimer = phevLoad.downTimer + dt
   phevLoad.demandDown = phevLoad.downTimer >= dct.phevLoadDownDelay
-  electrics.values.phevDownWhy = phevLoad.demandDown and (firm and 4 or 5) or 0
   if phevLoad.demandDown then
     -- the press is served by this downshift
     phevLoad.pedalLow = pedalNow
@@ -661,7 +657,6 @@ end
 local function phevStopSync()
   if engine then
     engine.syncTargetRatio = nil
-    engine.syncClutchTorque = 0
   end
   phevShift.phase = "idle"
 end
@@ -755,7 +750,7 @@ local function phevHandover(dt)
       local onTorque = driveHold + clutchSync
       -- what the incoming clutch passes on at the new gear's speed stays within the system power (160 kW): at a
       -- full-load upshift the old gear's wheel torque plus the surge gave about 230 kW at the wheels for 0.1-0.15 s
-      -- (phev_kickdown 2-3 at 90 km/h), which made the 0.5 s peaks read 166-168 kW system and 127 kW engine. The
+      -- (a kickdown 2-3 shift at 90 km/h), which made the 0.5 s peaks read 166-168 kW system and 127 kW engine. The
       -- engine's torque reduction then gives up the rest of the flywheel energy.
       if engine.systemPowerLimit and targetAV > 1 then
         onTorque = min(onTorque, max(driveHold, engine.systemPowerLimit / targetAV))
@@ -768,7 +763,6 @@ local function phevHandover(dt)
       onCmd = onTorque / capacity
       offCmd = 0
       engine.syncTargetRatio = onRatio
-      engine.syncClutchTorque = onTorque
       engine.syncTau = inertiaTime / 3
       if shaftAV - targetAV < tolAV then
         done = true
@@ -788,7 +782,6 @@ local function phevHandover(dt)
         syncClutch = -brakeHold
       end
       engine.syncTargetRatio = onRatio
-      engine.syncClutchTorque = syncClutch
       engine.syncTau = inertiaTime / 3
       if targetAV - shaftAV < tolAV then
         if hold > 0 then
@@ -804,7 +797,6 @@ local function phevHandover(dt)
       onCmd = p
       offCmd = (1 - p) * hold / capacity
       engine.syncTargetRatio = onRatio
-      engine.syncClutchTorque = hold
       if p >= 1 then
         done = true
       end
@@ -1587,6 +1579,7 @@ local function init(jbeamData, sharedFunctionTable)
   dct.phevShiftClutchCap = jbeamData.phevShiftClutchCap or 1.1
   phevLoad.pedal, phevLoad.coef, phevLoad.kickdown, phevLoad.downTimer, phevLoad.active = 0, 0, false, 0, false
   phevLoad.aggInit, phevLoad.downCooldown, phevLoad.lastPedal, phevLoad.fastPedal, phevLoad.gx, phevLoad.gy = false, 0, 0, 0, 0, 0
+  phevLoad.pedalLow, phevLoad.pedalNow, phevLoad.lastAir, phevLoad.decel, phevLoad.demandDown, phevLoad.lifted = nil, nil, nil, nil, false, true
   phevStopSync()
 
   M.maxRPM = engine.maxRPM
