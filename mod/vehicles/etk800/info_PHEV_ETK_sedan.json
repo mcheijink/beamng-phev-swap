@@ -1,0 +1,13 @@
+{
+  "Configuration": "800-Series PHEV Sedan (RWD, DCT)",
+  "Description": "Plug-in hybrid drivetrain: 1.4 turbo engine (115 kW), 85 kW motor in a 6-speed dual-clutch gearbox, 13 kWh battery; Electric / Hybrid / Boost modes. RWD.",
+  "Config Type": "Factory",
+  "Body Style": "Sedan",
+  "Drivetrain": "RWD",
+  "Fuel Type": "Plug-In-hybrid Gasoline",
+  "Transmission": "Dual-Clutch",
+  "Induction Type": "Turbo",
+  "Power": 218,
+  "Torque": 400,
+  "Value": 48000
+}

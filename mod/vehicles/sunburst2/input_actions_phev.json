@@ -1,0 +1,38 @@
+{
+  "phevToggleElectricMode": {
+    "order": 1.1,
+    "onDown": "controller.getControllerSafe('phev').toggleElectricMode()",
+    "title": "PHEV: Electric mode",
+    "desc": "Switch between Electric mode (engine off) and Hybrid"
+  },
+  "phevToggleBoostMode": {
+    "order": 1.2,
+    "onDown": "controller.getControllerSafe('phev').toggleBoostMode()",
+    "title": "PHEV: Boost mode",
+    "desc": "Switch between Boost mode (full system power) and Hybrid"
+  },
+  "phevToggleChargeMode": {
+    "order": 1.3,
+    "onDown": "controller.getControllerSafe('phev').toggleChargeMode()",
+    "title": "PHEV: Charge mode",
+    "desc": "Hybrid: let the engine charge the battery"
+  },
+  "phevCycleMode": {
+    "order": 1.4,
+    "onDown": "controller.getControllerSafe('phev').cycleMode()",
+    "title": "PHEV: next drive mode",
+    "desc": "Cycle Electric mode, Hybrid, Boost mode"
+  },
+  "phevToggleB": {
+    "order": 1.45,
+    "onDown": "controller.getControllerSafe('phev').toggleBMode()",
+    "title": "PHEV: B position",
+    "desc": "Toggle B (selector pulled back from D): stronger lift-off regeneration"
+  },
+  "phevToggleKickdown": {
+    "order": 1.5,
+    "onDown": "controller.getControllerSafe('phev').toggleKickdown()",
+    "title": "PHEV: kickdown on/off",
+    "desc": "Kickdown is full pedal (95 %+). Keyboard throttle always reaches it: switch it off here"
+  }
+}

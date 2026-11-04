@@ -1,0 +1,22 @@
+{
+  "domElement": "<phev-monitor></phev-monitor>",
+  "name": "Plug-in Hybrid Monitor",
+  "types": [
+    "ui.apps.categories.vehicle_info"
+  ],
+  "description": "Plug-in hybrid drivetrain: drive mode, engine and K0 state, motor, battery and power flow.",
+  "css": {
+    "right": "20px",
+    "top": "120px",
+    "width": "420px",
+    "height": "auto",
+    "min-width": "380px",
+    "min-height": "330px"
+  },
+  "author": "mcheijink",
+  "version": "1.0",
+  "directive": "phevMonitor",
+  "category": "Dashboard",
+  "isAuxiliary": false,
+  "interactive": "yes"
+}
