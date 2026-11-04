@@ -56,11 +56,11 @@ local kickdownActive = false
 local water = {block = false, timer = 0}
 local kbdFloorTimer = 0
 local brakeDevices = {}
--- brake devices of the axle the motor regenerates on: all wheels (regenAxle "all", as on the reference car), or only the driven
--- wheels (regenAxle "driven", rear-wheel-drive hosts): series blending then lowers the friction brake of that axle only
+-- brake devices of the axle the motor regenerates on: only the driven wheels (regenAxle "driven", the default), or all wheels
+-- (regenAxle "all"): series blending then lowers the friction brake of that axle only
 local regenBrakeDevices = {}
 local drivenBrakeDevices = {}
--- share of the driven axle's friction brake that is left (regenAxle "driven"), applied in updateWheelsIntermediate
+-- share of the driven axle's friction brake that is left (regenAxle "driven", the default), applied in updateWheelsIntermediate
 local axleBrakeScale = 1
 local finalDriveRatio = 3.75
 local coastWheelTorque = 0
@@ -467,31 +467,73 @@ local function motorCurveAt(av)
   return module.motorDriveTorqueAt(module, av)
 end
 
--- Brake blending: the pedal sets the total braking (BeamNG's normal pedal feel); the regeneration the
--- motor actually delivers replaces that much of the friction-brake demand. Friction takes over by itself
--- when regeneration fades (low speed, full battery, DCT shift, ABS / ESC / TC intervention).
+-- Regeneration torque the motor really puts on the wheels (Nm, >= 0), the part that may replace friction. The motor's own
+-- torque times the ratio is only an estimate: the shaft's inertia torque while it slows down and the gearbox losses come off
+-- it, and the friction brake was cut by the full estimate (the deceleration per pedal fell short of the car without
+-- regeneration, game test: 6-30 % less). The gearbox output torque is what reaches the wheels: the estimate is lowered to it
+-- (never raised: the K0 drag of a coupled engine and the shaft drag belong to the engine braking, they are extra on top of the
+-- pedal, as in a car without regeneration), but not below cfg.regenMeasureFloor of it (guards a bad reading). During a
+-- synchronised DCT shift the motor is busy matching the shaft speed and the slipping clutch carries the braking, so the
+-- gearbox output torque is used as it is (forward gears only: in P the park lock torque must not count).
+local function regenWheelTorque()
+  local ratio = wheelTorqueRatio()
+  local estimate = max(-(module.motorTorque or 0), 0) * ratio
+  if not gearbox or (electrics.values.gearIndex or 0) <= 0 then
+    return estimate
+  end
+  -- (the gearbox output torque is already after the gearbox: no driveline efficiency on it, that factor is part of the estimate)
+  local passed = max(-(gearbox.outputTorque1 or 0), 0) * finalDriveRatio
+  if module.syncTargetRatio then
+    return passed
+  end
+  local delivered = passed - max(-(module.k0Torque or 0), 0) * abs(gearbox.gearRatio or 0) * finalDriveRatio
+  return clampValue(delivered, estimate * cfg.regenMeasureFloor, estimate)
+end
+
+-- brake input that gives a given total friction torque on the wheels (the inverse of frictionBrakeTorqueFor: the torque
+-- rises with the input, piecewise linear through each wheel's brakeInputSplit), by bisection
+local function brakeInputForFriction(target)
+  local lo, hi = 0, 1
+  if frictionBrakeTorqueFor(1) <= target then
+    return 1
+  end
+  for _ = 1, 14 do
+    local mid = (lo + hi) * 0.5
+    if frictionBrakeTorqueFor(mid) < target then
+      lo = mid
+    else
+      hi = mid
+    end
+  end
+  return (lo + hi) * 0.5
+end
+
+-- Brake blending: the pedal sets the total braking (BeamNG's normal pedal feel, the same as the car without regeneration);
+-- the regeneration the motor actually delivers at the wheels (regenWheelTorque) replaces exactly that much of the friction
+-- brake. Friction takes over by itself when regeneration fades (low speed, full battery, DCT shift, ABS / ESC / TC
+-- intervention).
 --
--- regenAxle "driven" (rear-wheel drive): the regeneration brakes the driven axle only, so only that axle's friction
--- brake is lowered (axleBrakeScale, applied to its wheels in updateWheelsIntermediate); the pedal, and with it the
--- front brakes and the brake balance, stay as they are. regenDemand limits the regeneration to the friction torque
--- the driven axle would have applied at this pedal, so the total braking still follows the pedal.
+-- regenAxle "driven" (the default; front-wheel drive: the front axle, rear-wheel drive: the rear): the regeneration brakes
+-- the driven axle only, so only that axle's friction brake is lowered (axleBrakeScale, applied to its wheels in
+-- updateWheelsIntermediate); the pedal, and with it the other axle's brakes and the front / rear brake balance, stay as
+-- they are. regenDemand limits the regeneration to the friction torque the driven axle would have applied at this pedal, so
+-- the total braking still follows the pedal. regenAxle "all" (the maker's brake servo lowers the pressure of all four brakes):
+-- the friction of every wheel is lowered by the same share, which moves the balance towards the driven axle.
 local function blendBrakes(driverBrake)
+  electrics.values.phevDriverBrake = driverBrake
   if driverBrake <= 0.01 then
     axleBrakeScale = 1
     electrics.values.phevFrictionBrake = 0
     electrics.values.phevRegenBrakeShare = 0
     return
   end
-  if cfg.regenAxle == "driven" then
+  -- coast regeneration is extra deceleration on top of the pedal, so only the pedal part replaces friction
+  local regenForPedal = max(regenWheelTorque() - coastWheelTorque, 0)
+  if cfg.regenAxle ~= "all" then
     local axleRequested = frictionBrakeTorqueFor(driverBrake, drivenBrakeDevices)
-    local axleRegen = max(-(module.motorTorque or 0), 0) * wheelTorqueRatio()
-    if module.syncTargetRatio and gearbox and (electrics.values.gearIndex or 0) > 0 then
-      axleRegen = max(-(gearbox.outputTorque1 or 0), 0) * finalDriveRatio * cfg.drivelineEfficiency
-    end
-    axleRegen = max(axleRegen - coastWheelTorque, 0)
     axleBrakeScale = 1
     if axleRequested > 1 then
-      axleBrakeScale = clampValue(1 - axleRegen / axleRequested, 0, 1)
+      axleBrakeScale = clampValue(1 - regenForPedal / axleRequested, 0, 1)
     end
     local total = frictionBrakeTorqueFor(driverBrake)
     local share = total > 1 and clampValue(axleRequested * (1 - axleBrakeScale) / total, 0, 1) or 0
@@ -501,22 +543,16 @@ local function blendBrakes(driverBrake)
     return
   end
   local requested = frictionBrakeTorqueFor(driverBrake)
-  -- regeneration torque at the wheels. During a synchronised DCT shift the motor is busy matching the shaft
-  -- speed and the slipping clutch carries the braking, so the gearbox output torque is used then
-  -- (forward gears only: in P the park lock torque must not count)
-  local regenWheel = max(-(module.motorTorque or 0), 0) * wheelTorqueRatio()
-  if module.syncTargetRatio and gearbox and (electrics.values.gearIndex or 0) > 0 then
-    regenWheel = max(-(gearbox.outputTorque1 or 0), 0) * finalDriveRatio * cfg.drivelineEfficiency
-  end
-  -- coast regeneration is extra deceleration on top of the pedal, so only the pedal part replaces friction
-  local regenForPedal = max(regenWheel - coastWheelTorque, 0)
   local scale = 1
   if requested > 1 then
     scale = clampValue(1 - regenForPedal / requested, 0, 1)
   end
-  electrics.values.brake = driverBrake * scale
+  -- the wheels' own input curve (brakeInputSplit / brakeSplitCoef) is not linear: scaling the input by the share would
+  -- brake the rear wheels more than the share says, so the input is solved for the reduced total torque
+  local input = scale >= 1 and driverBrake or brakeInputForFriction(requested * scale)
+  electrics.values.brake = input
   electrics.values.brakelights = 1
-  electrics.values.phevFrictionBrake = driverBrake * scale
+  electrics.values.phevFrictionBrake = input
   electrics.values.phevRegenBrakeShare = 1 - scale
 end
 
@@ -1036,7 +1072,7 @@ end
 -- driving (no brake pedal, no ABS / ESC intervention), rate-limited by tvRate (Nm/s). BeamNG's brake-based traction
 -- control already brakes a spinning driven wheel (EDS); this adds the cornering part (provisional values).
 local function updateWheelsIntermediate(dt)
-  if cfg.regenAxle == "driven" and axleBrakeScale < 0.999 and (electrics.values.parkingbrake or 0) < 0.05 then
+  if cfg.regenAxle ~= "all" and axleBrakeScale < 0.999 and (electrics.values.parkingbrake or 0) < 0.05 then
     -- regeneration replaces part of the driven axle's friction brake (blendBrakes). Brake torque added by the stability
     -- systems would be scaled too, but regeneration is cut while they intervene (updateRegenSlip), so the scale is 1
     for _, wd in ipairs(drivenBrakeDevices) do
@@ -1051,7 +1087,9 @@ local function updateWheelsIntermediate(dt)
   local v = abs(electrics.values.airspeed or 0)
   local kmh = v * 3.6
   local driveShaft = (module.motorTorque or 0) + (module.k0Torque or 0)
-  local brakeIn = electrics.values.brake or 0
+  -- the driver's pedal, not the friction input after the blending (that falls to 0 while the motor brakes: no torque
+  -- vectoring under braking)
+  local brakeIn = electrics.values.phevDriverBrake or electrics.values.brake or 0
   local wanted = 0
   local innerLeft = false
   if kmh > cfg.tvMinKmh and kmh < cfg.tvMaxKmh and driveShaft > 5 and brakeIn < 0.02 and (electrics.values.gearIndex or 0) >= 1
@@ -1530,7 +1568,11 @@ local function readConfig(jbeamData)
     -- longitudinal rear-wheel-drive car) or a fixed ratio, which wins; and the axle the motor regenerates on, see blendBrakes
     finalDriveDevice = jbeamData.finalDriveDevice or "torsionReactorF",
     finalDriveRatio = jbeamData.finalDriveRatio,
-    regenAxle = jbeamData.regenAxle or "all",
+    -- "driven": regeneration replaces the friction brake of the driven axle only (the brake balance stays); "all": all four
+    -- brakes are lowered by the same share
+    regenAxle = jbeamData.regenAxle or "driven",
+    -- the share of the estimated regeneration torque that is always counted as delivered (regenWheelTorque)
+    regenMeasureFloor = jbeamData.regenMeasureFloor or 0.5,
     -- automatic headlights: on / off, the hours of darkness (on at autoLightsOnHour, off at autoLightsOffHour), the
     -- time-of-day poll (s) and the offset that turns BeamNG's time of day into a clock (0 = noon)
     autoLights = jbeamData.autoLights ~= false,
@@ -1607,7 +1649,7 @@ local function init(jbeamData)
       end
     end
   end
-  regenBrakeDevices = cfg.regenAxle == "driven" and drivenBrakeDevices or brakeDevices
+  regenBrakeDevices = cfg.regenAxle ~= "all" and drivenBrakeDevices or brakeDevices
   axleBrakeScale = 1
   -- brake torque vectoring: the wheels by axle and side (names FL / FR / RL / RR in the host car's parts)
   tv.frontL, tv.frontR, tv.rearL, tv.rearR = nil, nil, nil, nil

@@ -45,19 +45,19 @@
         ],
         [
           500,
-          81.4
+          81.0
         ],
         [
           750,
-          124.5
+          123.2
         ],
         [
           1000,
-          143.2
+          140.7
         ],
         [
           1250,
-          145.6
+          142.0
         ],
         [
           1500,
@@ -140,7 +140,21 @@
       "instantAfterFireCoef": 0,
       "sustainedAfterFireCoef": 0,
       "electricsThrottleFactorName": "phevIceThrottleFactor",
-      "uiName": "PHEV 1.4 Turbo I4 (115 kW)"
+      "uiName": "PHEV 1.4 Turbo I4 (115 kW)",
+      "torqueModExhaust": [
+        [
+          "rpm",
+          "torque"
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          8000,
+          0
+        ]
+      ]
     },
     "turbocharger": {
       "turboSizeCoef": 0.0,
@@ -148,9 +162,9 @@
       "wastegateStart": 12.5,
       "maxExhaustPower": 4375,
       "backPressureCoef": 1.33e-06,
-      "pressureRatePSI": 15,
+      "pressureRatePSI": 25,
       "frictionCoef": 15.5,
-      "inertia": 0.9,
+      "inertia": 0.6,
       "pressurePSI": [
         [
           0,
@@ -396,11 +410,11 @@
       "coolDownHeaterLoss": 3.16
     },
     "phev": {
+      "regenAxle": "driven",
       "autoLights": false,
       "tvEnabled": false,
       "tvTrack": 1.55,
       "finalDriveDevice": "differential_R",
-      "regenAxle": "driven",
       "vehicleMassKg": 1980
     },
     "soundConfigPhevMotor": {

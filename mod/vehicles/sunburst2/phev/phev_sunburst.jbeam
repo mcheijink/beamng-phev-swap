@@ -159,9 +159,9 @@
       "wastegateLimit": 12.51,
       "maxExhaustPower": 4375,
       "backPressureCoef": 1.33e-06,
-      "pressureRatePSI": 15,
+      "pressureRatePSI": 25,
       "frictionCoef": 15.5,
-      "inertia": 0.9,
+      "inertia": 0.6,
       "engineDef": [
         [
           0,
@@ -284,7 +284,9 @@
           250000,
           15.0
         ]
-      ]
+      ],
+      "turboSizeCoef": 0.0,
+      "bovEnabled": false
     }
   },
   // Fills the vanilla transaxle slot. Own geometry: tra1 keeps its name because the vanilla body, engine mounts and
@@ -438,6 +440,7 @@
       "coolDownHeaterLoss": 2.69
     },
     "phev": {
+      "regenAxle": "driven",
       "autoLights": false,
       "tvEnabled": true,
       "tvTrack": 1.5,
