@@ -87,6 +87,7 @@ The hybrid parts and Lua are shared, so other vehicle mods can use them with a f
 | [docs/PHEV-TUNING.md](docs/PHEV-TUNING.md) | Per-car tuning: mass, brakes, springs, battery sizes, petrol tank |
 | [docs/PHEV-MESHES.md](docs/PHEV-MESHES.md) | The battery box mesh and its clearance to the vanilla car |
 | [docs/PHEV-VALUES.md](docs/PHEV-VALUES.md) | Where the core data values come from |
+| [docs/TECHNICAL.md](docs/TECHNICAL.md) | How the drivetrain works, and how it compares with a real car of the same layout (charts) |
 
 ## Repository layout
 
