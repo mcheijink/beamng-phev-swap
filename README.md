@@ -4,6 +4,14 @@ A plug-in hybrid drivetrain for five of the game's cars: a 1.4 litre turbo petro
 
 The drivetrain is calibrated on measurements of a real plug-in hybrid estate car: drive logs, the workshop manual and published data. Engine start and stop, the torque split, regeneration, brake blending and the warm-up all follow what that car does.
 
+![PHEV_ETK_wagon](docs/images/01_PHEV_ETK_wagon_front_three_quarter.jpg)
+
+![PHEV_FCV and PHEV_Sunburst](docs/images/02_PHEV_FCV_and_PHEV_Sunburst.jpg)
+
+![Driving in Hybrid with the Plug-in Hybrid Monitor app](docs/images/03_PHEV_FCV_driving_Hybrid_with_monitor.jpg)
+
+![Battery sizes in the parts selector](docs/images/04_parts_window_battery_slot_10_13_18_kWh.jpg)
+
 Mod id: `phev_swap_mcheijink` (zip name `phev_swap_mcheijink.zip`, unchanged between versions).
 
 ## Cars and configurations
