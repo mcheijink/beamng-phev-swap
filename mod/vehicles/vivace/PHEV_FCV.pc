@@ -87,6 +87,6 @@
     "vivace_spring_R": "vivace_spring_R",
     "vivace_swaybar_F": "vivace_swaybar_F",
     "vivace_wheeldata_F": "vivace_wheeldata_F",
-    "phev_vivace_battery": "phev_vivace_battery_fcv"
+    "phev_fcv_battery": "phev_vivace_battery_fcv"
   }
 }

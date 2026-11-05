@@ -134,7 +134,7 @@
     "vivace_wheeldata_R_wide": "vivace_wheeldata_R_wide",
     "wheel_F_5": "cherrier_wheel_04a_18x8_F",
     "wheel_R_5": "cherrier_wheel_04a_18x8_R",
-    "phev_vivace_battery": "phev_vivace_battery_ardente"
+    "phev_ardente_battery": "phev_vivace_battery_ardente"
   },
   "vars": {
     "$headlightPitchComp": 0.2

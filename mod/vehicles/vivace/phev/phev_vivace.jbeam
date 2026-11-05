@@ -300,18 +300,6 @@
         "Front axle differential"
       ],
       [
-        "phev_vivace_battery",
-        [
-          "phev_vivace_battery"
-        ],
-        [],
-        "phev_vivace_battery_fcv",
-        "Hybrid Battery (13 kWh)",
-        {
-          "coreSlot": true
-        }
-      ],
-      [
         "phev_system",
         [
           "phev_system"
@@ -1164,7 +1152,7 @@
       "name": "PHEV 13 kWh Battery",
       "value": 5000
     },
-    "slotType": "phev_vivace_battery",
+    "slotType": "phev_fcv_battery",
     "variables": [
       [
         "name",
@@ -1516,7 +1504,28 @@
     },
     "phev": {
       "tvTrack": 1.47
-    }
+    },
+    "slots2": [
+      [
+        "name",
+        "allowTypes",
+        "denyTypes",
+        "default",
+        "description"
+      ],
+      [
+        "phev_fcv_battery",
+        [
+          "phev_fcv_battery"
+        ],
+        [],
+        "phev_vivace_battery_fcv",
+        "Hybrid Battery",
+        {
+          "coreSlot": true
+        }
+      ]
+    ]
   },
   // 13 kWh pack: mass 173.0 kg on the pack nodes, scaled from the 13 kWh pack on cell energy density (an estimate).
   // Tuning for the extra mass (estimated from the added pack mass and the axle loads): $brakestrength default 1.17 (declared again here, a later declaration wins) keeps the vanilla pedal feel; parallel spring beams on the vanilla spring node pairs (own preload range from the extra load of the axle: F 118 mm, R 54 mm) keep the ride height and frequency (F: fh4r-fs1r +5300 N/m, fh4l-fs1l +5300 N/m; R: rh5l-r1ll +12100 N/m, rh5r-r1rr +12100 N/m); petrol tank 38 L (mainTank.fuelCapacity merges over the vanilla tank part).
@@ -1527,7 +1536,7 @@
       "name": "PHEV 13 kWh Battery (Ardente)",
       "value": 5000
     },
-    "slotType": "phev_vivace_battery",
+    "slotType": "phev_ardente_battery",
     "variables": [
       [
         "name",
@@ -1879,7 +1888,28 @@
     },
     "phev": {
       "tvTrack": 1.55
-    }
+    },
+    "slots2": [
+      [
+        "name",
+        "allowTypes",
+        "denyTypes",
+        "default",
+        "description"
+      ],
+      [
+        "phev_ardente_battery",
+        [
+          "phev_ardente_battery"
+        ],
+        [],
+        "phev_vivace_battery_ardente",
+        "Hybrid Battery",
+        {
+          "coreSlot": true
+        }
+      ]
+    ]
   },
   // 10 kWh pack: mass 144.7 kg on the pack nodes, scaled from the 13 kWh pack on cell energy density (an estimate).
   // Tuning for the extra mass (estimated from the added pack mass and the axle loads): $brakestrength default 1.15 (declared again here, a later declaration wins) keeps the vanilla pedal feel; parallel spring beams on the vanilla spring node pairs (own preload range from the extra load of the axle: F 194 mm, R 192 mm) keep the ride height and frequency (F: fh4r-fs1r +3000 N/m, fh4l-fs1l +3000 N/m; R: rh3l-r1ll +2900 N/m, rh3r-r1rr +2900 N/m); petrol tank 39.5 L (mainTank.fuelCapacity merges over the vanilla tank part).
@@ -1890,7 +1920,7 @@
       "name": "PHEV 10 kWh Battery",
       "value": 4000
     },
-    "slotType": "phev_vivace_battery",
+    "slotType": "phev_fcv_battery",
     "variables": [
       [
         "name",
@@ -2239,7 +2269,7 @@
       "name": "PHEV 18 kWh Battery",
       "value": 7000
     },
-    "slotType": "phev_vivace_battery",
+    "slotType": "phev_fcv_battery",
     "variables": [
       [
         "name",
@@ -2588,7 +2618,7 @@
       "name": "PHEV 10 kWh Battery (Ardente)",
       "value": 4000
     },
-    "slotType": "phev_vivace_battery",
+    "slotType": "phev_ardente_battery",
     "variables": [
       [
         "name",
@@ -2937,7 +2967,7 @@
       "name": "PHEV 18 kWh Battery (Ardente)",
       "value": 7000
     },
-    "slotType": "phev_vivace_battery",
+    "slotType": "phev_ardente_battery",
     "variables": [
       [
         "name",

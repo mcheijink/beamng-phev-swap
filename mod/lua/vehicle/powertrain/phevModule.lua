@@ -176,11 +176,43 @@ local function getBattery(device)
   return energyStorage.getStorage(device.batteryName)
 end
 
+-- Gross pack energy (J): the part's rated capacity. The game's storage field energyCapacity is lowered to the top of the
+-- usable window (adoptPack), so the gross figure is kept in grossEnergyCapacity.
+local function grossEnergy(storage)
+  if storage.grossEnergyCapacity then
+    return storage.grossEnergyCapacity
+  end
+  if storage.capacity and storage.capacity > 0 then
+    return storage.capacity * 3600000
+  end
+  return storage.energyCapacity or 0
+end
+
+-- The pack never holds more than the top of the usable window (the BMS charge limit). The storage reports that top as its
+-- capacity (energyCapacity), so everything that fills it up to its capacity stops at the top: a career charger counts
+-- (and charges for) only the energy the pack accepts, a refuel or setRemainingRatio(1) lands on the top. Idempotent, run
+-- at spawn and every frame.
+local function adoptPack(device, storage)
+  local gross = grossEnergy(storage)
+  if gross <= 0 then
+    return 0
+  end
+  storage.grossEnergyCapacity = gross
+  local top = gross * device.socMax
+  if storage.energyCapacity ~= top then
+    storage.energyCapacity = top
+  end
+  return top
+end
+
 -- raw (gross) state of charge 0..1
 local function getRawSoc(device)
   local storage = getBattery(device)
-  if storage and storage.energyCapacity and storage.energyCapacity > 0 then
-    return storage.storedEnergy / storage.energyCapacity
+  if storage then
+    local gross = grossEnergy(storage)
+    if gross > 0 then
+      return storage.storedEnergy / gross
+    end
   end
   return 0
 end
@@ -213,10 +245,12 @@ local function updateBatteryCoefs(device)
   end
   device.batteryOCVNow = cellV * device.batteryCells
   local storage = getBattery(device)
-  local hasBattery = storage ~= nil and storage.energyCapacity > 0
-  -- taper drive power over the last 1 % of the window, taper regen over the top 1 %
+  local hasBattery = storage ~= nil and grossEnergy(storage) > 0
+  -- taper drive power over the last 1 % of the window, taper regen and charging over the top 1 %: it is 0 from the top of
+  -- the window on (adoptPack holds the stored energy there), so nothing charges past it
+  local headroom = 1 - usable
   device.batteryDriveCoef = hasBattery and clampValue(usable / 0.01, 0, 1) or 0
-  device.batteryRegenCoef = hasBattery and clampValue((1 - usable) / 0.01, 0, 1) or 0
+  device.batteryRegenCoef = (hasBattery and headroom > 1e-6) and clampValue(headroom / 0.01, 0, 1) or 0
 end
 
 -- Battery power limits (BMS), by charge and pack temperature, and the pack temperature itself.
@@ -286,14 +320,24 @@ local function updateBatteryLimits(device, dt)
   device.chargeLimitNow = max(charge, 0)
 end
 
+-- Books the energy of the physics steps and holds the stored energy inside 0..top of the usable window. Whatever wrote the
+-- storage since the last frame (a charger, a refuel, setStoredEnergy, a reset to a full pack) is clamped here, on the next
+-- update, and the storage's ratios are refreshed.
 local function updateEnergyUsage(device)
   local storage = getBattery(device)
-  if storage and device.spentEnergy ~= 0 then
-    local newEnergy = clampValue(storage.storedEnergy - device.spentEnergy, 0, storage.energyCapacity)
-    if storage.setStoredEnergy then
-      storage:setStoredEnergy(newEnergy)
-    else
-      storage.storedEnergy = newEnergy
+  if storage then
+    local top = adoptPack(device, storage)
+    local energy = storage.storedEnergy
+    if energy ~= energy then
+      energy = 0
+    end
+    local newEnergy = clampValue(energy - device.spentEnergy, 0, top)
+    if newEnergy ~= storage.storedEnergy or device.spentEnergy ~= 0 then
+      if storage.setStoredEnergy then
+        storage:setStoredEnergy(newEnergy)
+      else
+        storage.storedEnergy = newEnergy
+      end
     end
   end
   device.spentEnergy = 0
@@ -1019,7 +1063,7 @@ local function updateGFX(device, dt)
   -- battery power at the terminals (inverter + auxiliaries) and what leaves the cells (+ the internal-resistance loss)
   local batteryPower = device.instantTerminalPower or 0
   local storage = getBattery(device)
-  local grossKWh = storage and storage.energyCapacity and storage.energyCapacity / 3600000 or 0
+  local grossKWh = storage and grossEnergy(storage) / 3600000 or 0
   local usableCapKWh = grossKWh * (device.socMax - device.socMin)
   electrics.values.phevIceStateCode = stateCodes[device.k0State] or 0
   electrics.values.phevShaftRPM = shaftAV * avToRPM
@@ -1044,7 +1088,8 @@ local function updateGFX(device, dt)
   electrics.values.phevBatteryGrossKWh = grossKWh
   electrics.values.phevBatteryTempC = device.batteryTemp or 0
   electrics.values.phevBattDischargeLimitKW = (device.dischargeLimitNow or 0) * 0.001
-  electrics.values.phevBattChargeLimitKW = (device.chargeLimitNow or 0) * 0.001
+  -- the charge limit including the taper that closes it at the top of the window
+  electrics.values.phevBattChargeLimitKW = (device.chargeLimitNow or 0) * (device.batteryRegenCoef or 1) * 0.001
   electrics.values.phevBattCoolingKW = (device.batteryCoolingPower or 0) * 0.001
   electrics.values.phevBatteryUsableKWh = device.usableSoc * usableCapKWh
   electrics.values.phevBatteryUsableCapKWh = usableCapKWh
@@ -1365,6 +1410,8 @@ local function registerStorage(device, storageName)
   local storage = energyStorage.getStorage(storageName)
   if storage and storage.type == "electricBattery" then
     device.batteryName = storageName
+    -- the usable top is the pack's capacity from the start, before any charger reads it
+    adoptPack(device, storage)
   end
 end
 
