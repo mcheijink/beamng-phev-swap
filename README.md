@@ -12,7 +12,7 @@ The drivetrain is calibrated on measurements of a real plug-in hybrid estate car
 
 ![Battery sizes in the parts selector](docs/images/04_parts_window_battery_slot_10_13_18_kWh.jpg)
 
-Mod id: `phev_swap_mcheijink` (zip name `phev_swap_mcheijink.zip`, unchanged between versions).
+Mod id: `plugin_hybrid_swap` (zip name `plugin_hybrid_swap.zip`, unchanged between versions).
 
 ## Cars and configurations
 
@@ -44,7 +44,7 @@ The mod adds new configurations to vanilla cars. It uses their vanilla meshes; t
 
 ## Install
 
-1. Put `phev_swap_mcheijink.zip` in your BeamNG.drive `mods` folder (or subscribe to it on the official repository) and start the game.
+1. Put `plugin_hybrid_swap.zip` in your BeamNG.drive `mods` folder (or subscribe to it on the official repository) and start the game.
 2. Spawn one of the PHEV configurations listed above, or fit the parts to a configuration of your own (engine, gearbox, hybrid module, battery) in the parts selector.
 3. In the UI apps menu, add **Plug-in Hybrid Monitor** if you like.
 
@@ -54,7 +54,7 @@ The `mod/` folder is the content of the zip. Zip its contents, so that `lua/`, `
 
 ```
 cd mod
-zip -r ../phev_swap_mcheijink.zip .
+zip -r ../plugin_hybrid_swap.zip .
 ```
 
 The mod ships shared Lua under `lua/vehicle/...` (controller, powertrain device, shift logic). If your game version does not find it there, copy the three Lua files into each car's own `vehicles/<car>/lua/` folder instead and remove them from `lua/vehicle/`; do not keep both.

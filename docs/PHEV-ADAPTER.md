@@ -1,6 +1,6 @@
 # Plug-in Hybrid Swap: adapter interface for vehicle mods
 
-How a vehicle mod (a car that is not one of the game's own) uses the drivetrain of the Plug-in Hybrid Swap mod (`phev_swap_mcheijink.zip`). The worked example is the ETK 800 port inside this repository: `mod/vehicles/common/phev/phev_etk.jbeam` (parts `phev_etk_ecu`, `phev_etk_transmission_dct`, `phev_etk_drivemodes`, `phev_etk_battery_*`) and `mod/vehicles/etk800/`. Every part and key name below can be looked up there. In the text, "a car mod" is any mod that adds a car and wants to offer a configuration with this drivetrain.
+How a vehicle mod (a car that is not one of the game's own) uses the drivetrain of the Plug-in Hybrid Swap mod (`plugin_hybrid_swap.zip`). The worked example is the ETK 800 port inside this repository: `mod/vehicles/common/phev/phev_etk.jbeam` (parts `phev_etk_ecu`, `phev_etk_transmission_dct`, `phev_etk_drivemodes`, `phev_etk_battery_*`) and `mod/vehicles/etk800/`. Every part and key name below can be looked up there. In the text, "a car mod" is any mod that adds a car and wants to offer a configuration with this drivetrain.
 
 ## 1. What the mod gives you
 
