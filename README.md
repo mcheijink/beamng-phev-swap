@@ -32,15 +32,19 @@ The mod adds new configurations to vanilla cars. It uses their vanilla meshes; t
 - Charge mode: in Hybrid the engine charges the battery while you drive or stand still, up to the top of the usable window, then it holds. Standing still in P or N the engine runs at about 1,800 rpm and charges about 11 kW; in D at a standstill about 2 kW, without creeping.
 - Regeneration when you lift off and when you brake, blended with the friction brakes. B position for stronger lift-off regeneration.
 - Kickdown at full pedal (99 %); with keyboard throttle, hold full throttle for 2 s. It can be switched off.
-- Battery sizes of 10, 13 and 18 kWh in the parts selector, each with its own mass. The petrol tank is reduced for the battery (38 L at 13 kWh).
-- Battery management: the usable window is 22.5-90 % of the pack. The charge never goes above the top of it, whatever charges it (regeneration, the engine, a career charging station: the charger stops there and bills only the energy the pack took).
+- Battery sizes of 10, 13 and 18 kWh in the parts selector (6.75, 8.8 and 12.15 kWh usable), each with its own mass. The petrol tank is reduced for the battery (38 L at 13 kWh).
+- Battery management: the charge is shown as the usable part only, in kWh and % (0 % empty, 100 % full: 6.75, 8.8 and 12.15 kWh usable on the 10, 13 and 18 kWh packs). The charge never goes above 100 %, whatever charges it (regeneration, the engine, a career charging station: the charger stops there and bills only the energy the pack took).
 - Battery temperature: the pack starts at 20 °C with the game's "start preheated" setting, otherwise 5 °C above the outside temperature. A cold or hot pack gives and takes less power.
 - Traction control follows the drive mode: Electric and Hybrid keep wheel slip low, Boost allows more.
 - Brakes and springs are adjusted per car for the extra mass, so the car keeps its ride height and brakes at least as strongly as before at the same pedal. Lifting off coasts more freely than with engine braking: regeneration takes its place (see [docs/PHEV-TUNING.md](docs/PHEV-TUNING.md)).
 - Brake torque vectoring on the inner front wheel (rear-wheel-drive configurations have it off by default).
 - Emergency stop signal: the brake lights flash under full braking from high speed, the hazard lights come on near a standstill.
 - No engine start while the engine's air intake is under water.
-- Plug-in Hybrid Monitor UI app: drive mode, engine and clutch state, motor and battery power, charge level. It shows only on a car with this drivetrain.
+- Plug-in Hybrid Monitor UI app: drive mode, engine and clutch state, motor and battery power, charge level (usable kWh and %). It shows only on a car with this drivetrain.
+
+## Known limits
+
+- The career charging screen is the game's own and counts the energy from an empty pack, including the reserve below the usable part. On the 13 kWh pack it shows the full mark as 11.7 kWh, where the mod shows 8.8 kWh (100 %). Charging stops at the same point, and the station bills only the energy the pack took.
 
 ## Install
 
@@ -73,7 +77,7 @@ Change them in Options > Controls, category vehicle.
 
 ## The monitor app
 
-"Plug-in Hybrid Monitor" (`ui/modules/apps/PhevMonitor`) reads the `phev*` electrics of the active vehicle and shows drive mode, engine and K0 clutch state, motor and battery power and the charge level. It hides itself on any vehicle that does not publish `phevMode`.
+"Plug-in Hybrid Monitor" (`ui/modules/apps/PhevMonitor`) reads the `phev*` electrics of the active vehicle and shows drive mode, engine and K0 clutch state, motor and battery power and the charge level (usable kWh and %, no raw or gross pack figures). It hides itself on any vehicle that does not publish `phevMode`.
 
 ## For mod authors
 

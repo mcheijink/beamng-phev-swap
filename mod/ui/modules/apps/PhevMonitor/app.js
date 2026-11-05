@@ -49,7 +49,7 @@ angular.module('beamng.apps')
     <span class="value" style="width:48px; text-align:right;">{{ d.soc.toFixed(0) }}<span class="unit">%</span></span>
   </div>
   <div class="row" style="justify-content: space-between; margin-top:-3px;">
-    <span class="label">{{ d.usableKWh.toFixed(1) }} / {{ d.usableCapKWh.toFixed(1) }} kWh usable · raw {{ d.socRaw.toFixed(1) }}% ({{ d.winMin.toFixed(1) }}–{{ d.winMax.toFixed(0) }}%)</span>
+    <span class="label">{{ d.usableKWh.toFixed(1) }} / {{ d.usableCapKWh.toFixed(1) }} kWh · {{ d.soc.toFixed(0) }} %</span>
     <span class="label" ng-style="{color: d.battKW < -0.5 ? '#19a974' : (d.battKW > 0.5 ? '#ffb347' : '#8796a5')}">{{ d.battKW > 0 ? '+' : '' }}{{ d.battKW.toFixed(1) }} kW</span>
   </div>
 
@@ -85,7 +85,7 @@ angular.module('beamng.apps')
     <text x="362" y="56" text-anchor="middle" fill="#c9d4de" font-size="9">km/h · {{ d.wheelKW.toFixed(0) }} kW</text>
     <!-- battery -->
     <rect x="146" y="84" width="104" height="28" rx="4" fill="#222b35" stroke="#4a5866"></rect>
-    <text x="198" y="102" text-anchor="middle" fill="#e8eef2" font-size="11">HV battery {{ d.grossKWh.toFixed(1) }} kWh</text>
+    <text x="198" y="102" text-anchor="middle" fill="#e8eef2" font-size="11">HV battery {{ d.usableKWh.toFixed(1) }} kWh</text>
     <!-- flows -->
     <line x1="108" y1="37" x2="116" y2="37" stroke="#ffb347" stroke-width="3" ng-attr-opacity="{{ d.engKW > 0.5 ? 1 : 0.15 }}"></line>
     <line x1="138" y1="37" x2="146" y2="37" stroke="#ffb347" stroke-width="3" ng-attr-opacity="{{ d.engKW > 0.5 ? 1 : 0.15 }}"></line>
@@ -127,8 +127,8 @@ angular.module('beamng.apps')
 
       $scope.abs = Math.abs
       $scope.d = {
-        present: false, mode: 0, ready: false, charge: false, soc: 0, socRaw: 0, hold: 0, socColor: '#19a974',
-        usableKWh: 0, usableCapKWh: 0, grossKWh: 0, winMin: 0, winMax: 0, battKW: 0,
+        present: false, mode: 0, ready: false, charge: false, soc: 0, hold: 0, socColor: '#19a974',
+        usableKWh: 0, usableCapKWh: 0, battKW: 0,
         iceStateName: 'OFF', iceRunning: false, iceRPM: 0, engKW: 0, k0: 0,
         motorKW: 0, motorNm: 0, shaftRPM: 0, gear: 'P', launchElectric: true, speed: 0, sysKW: 0, wheelKW: 0,
         boost: 0, engineShare: 1, coolant: 0, warming: false, fuel: 0, pedal: 0, iceThrottle: 0, avas: 0,
@@ -155,14 +155,10 @@ angular.module('beamng.apps')
           d.ready = num(e.phevReady) > 0
           d.charge = num(e.phevChargeFunction) > 0
           d.soc = Math.max(0, Math.min(100, num(e.phevSocUsable)))
-          d.socRaw = num(e.phevSocRaw)
           d.hold = Math.max(0, Math.min(100, num(e.phevHoldTarget)))
           d.socColor = d.soc < 10 ? '#d7263d' : (d.soc < 25 ? '#e0a21f' : '#19a974')
           d.usableKWh = num(e.phevBatteryUsableKWh)
           d.usableCapKWh = num(e.phevBatteryUsableCapKWh)
-          d.grossKWh = num(e.phevBatteryGrossKWh)
-          d.winMin = num(e.phevSocWindowMin)
-          d.winMax = num(e.phevSocWindowMax)
           d.battKW = num(e.phevBatteryKW)
           const stateCode = Math.round(num(e.phevIceStateCode))
           d.iceStateName = stateNames[stateCode] || 'OFF'

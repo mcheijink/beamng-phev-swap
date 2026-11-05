@@ -82,8 +82,8 @@ A start that does not fire within 2 s, or an engine that dies during sync, is re
 
 | Item | Model |
 |---|---|
-| Capacity and window | 13 kWh gross; usable window 22.5 to 90 % of the pack, 8.775 kWh (10 kWh pack 6.75 kWh, 18 kWh pack 12.15 kWh usable). The displayed charge runs 0 to 100 % over the window |
-| Cap at the top | the stored energy is clamped at 90 % of gross whatever charges the pack: regeneration, the engine, or a career charging station (the station stops there and bills only what the pack took). Charge limits also taper well before the top |
+| Capacity and window | 13 kWh gross; usable window 22.5 to 90 % of the pack, 8.775 kWh (10 kWh pack 6.75 kWh, 18 kWh pack 12.15 kWh usable). The displayed charge runs 0 to 100 % over the window: the monitor app and every charge figure in this document use this usable scale; raw values (share of the whole pack) are marked as such |
+| Cap at the top | the stored energy is clamped at the top of the window (100 % usable; raw: 90 % of the pack) whatever charges the pack: regeneration, the engine, or a career charging station (the station stops there and bills only what the pack took; its own screen is the game's and counts from an empty pack, so it shows 11.7 kWh at the top of the 13 kWh pack). Charge limits also taper well before the top |
 | Rated power | 90 kW out and 40 kW in at the terminals (13 kWh pack) |
 | Discharge limit by charge | 50 % of rated at 0 % usable, 75 % at 3 %, full from 10 % |
 | Charge limit by charge | full up to 80 % usable, 50 % at 90 %, 20 % at 100 % |
