@@ -1,6 +1,6 @@
 # Plug-in Hybrid Swap for BeamNG.drive
 
-A plug-in hybrid drivetrain for five of the game's cars: a 1.4 litre turbo petrol engine (115 kW) and an 85 kW electric motor between the engine and a 6-speed dual-clutch gearbox, with a clutch that lets the engine stop and start while you drive. The battery sits under the rear seat; the petrol tank stays (smaller, to make room for the pack).
+A plug-in hybrid drivetrain for five of the game's cars: a 1.4 litre turbo petrol engine (115 kW) and an 85 kW electric motor between the engine and a 6-speed dual-clutch gearbox, with a clutch that lets the engine stop and start while you drive. The battery sits under the rear seat (behind the front seats in the coupe); the petrol tank stays (smaller, to make room for the pack).
 
 The drivetrain is calibrated on measurements of a real plug-in hybrid estate car: drive logs, the workshop manual and published data. Engine start and stop, the torque split, regeneration, brake blending and the warm-up all follow what that car does.
 
@@ -16,7 +16,7 @@ Mod id: `phev_swap_mcheijink` (zip name `phev_swap_mcheijink.zip`, unchanged bet
 
 ## Cars and configurations
 
-The mod adds new configurations to vanilla cars. It uses their vanilla meshes; the battery box is hidden in the rear seat base.
+The mod adds new configurations to vanilla cars. It uses their vanilla meshes; the battery box is hidden in the rear seat base (behind the front seats in the K-Series coupe).
 
 | Car | Configurations | Drive |
 |---|---|---|
@@ -29,11 +29,14 @@ The mod adds new configurations to vanilla cars. It uses their vanilla meshes; t
 ## Features
 
 - Three drive modes: Electric (engine off), Hybrid (the car decides) and Boost (engine and motor together, full system power).
-- Charge mode: in Hybrid the engine charges the battery while you drive or stand still.
+- Charge mode: in Hybrid the engine charges the battery while you drive or stand still, up to 80 % of the usable charge, then it holds. Standing still in P or N the engine runs at about 1,800 rpm and charges about 11 kW; in D at a standstill about 2 kW, without creeping.
 - Regeneration when you lift off and when you brake, blended with the friction brakes. B position for stronger lift-off regeneration.
-- Kickdown at full pedal (99 %). It can be switched off for keyboard throttle.
+- Kickdown at full pedal (99 %); with keyboard throttle, hold full throttle for 2 s. It can be switched off.
 - Battery sizes of 10, 13 and 18 kWh in the parts selector, each with its own mass. The petrol tank is reduced for the battery (38 L at 13 kWh).
-- Brakes and springs are adjusted per car for the extra mass, so the car keeps its ride height and pedal feel (see [docs/PHEV-TUNING.md](docs/PHEV-TUNING.md)).
+- Battery management: the usable window is 22.5-90 % of the pack. The charge never goes above the top of it, whatever charges it (regeneration, the engine, a career charging station: the charger stops there and bills only the energy the pack took).
+- Battery temperature: the pack starts at 20 °C with the game's "start preheated" setting, otherwise 5 °C above the outside temperature. A cold or hot pack gives and takes less power.
+- Traction control follows the drive mode: Electric and Hybrid keep wheel slip low, Boost allows more.
+- Brakes and springs are adjusted per car for the extra mass, so the car keeps its ride height and brakes at least as strongly as before at the same pedal. Lifting off coasts more freely than with engine braking: regeneration takes its place (see [docs/PHEV-TUNING.md](docs/PHEV-TUNING.md)).
 - Brake torque vectoring on the inner front wheel (rear-wheel-drive configurations have it off by default).
 - Emergency stop signal: the brake lights flash under full braking from high speed, the hazard lights come on near a standstill.
 - No engine start while the engine's air intake is under water.
