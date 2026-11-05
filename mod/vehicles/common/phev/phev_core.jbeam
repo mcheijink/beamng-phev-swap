@@ -271,7 +271,7 @@
         ]
       ],
       "warmUpTemperature": 70,
-      "chargeTarget": 0.8,
+      "chargeTarget": 1.0,
       "coastDecelD": 0.03,
       "coastDecelBoost": 0.04,
       "coastDecelB": 0.14,

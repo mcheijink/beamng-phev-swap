@@ -946,8 +946,11 @@ local function hybridCoupledSplit(dt, pedal, rawPedal, coastCoef, brake, speedKm
     engineShare = 1
     local regenAvail = module.motorRegenTorqueAt(module, shaftAV)
     local genTorque = min(chargeFunction and cfg.chargeTorque or cfg.sustainTorque, regenAvail) * chargeCoef
-    local fill = max(demandTorque + genTorque - engineTorque, 0) - genTorque
-    return fillSmoother:get(motorFraction(fill, shaftAV), dt), iceFactorAbs(demandTorque + genTorque, rawPedal, shaftAV)
+    -- the module scales a generator request by the pack's taper at the top of the window (batteryRegenCoef): the engine
+    -- adds only what the motor still absorbs, else the torque the motor no longer takes would drive the car
+    local absorbed = genTorque * (module.batteryRegenCoef or 1)
+    local fill = max(demandTorque + absorbed - engineTorque, 0) - genTorque
+    return fillSmoother:get(motorFraction(fill, shaftAV), dt), iceFactorAbs(demandTorque + absorbed, rawPedal, shaftAV)
   end
 
   -- The engine takes the demand up to the torque at which the real car's turbo starts to build boost (logs: from
@@ -1440,7 +1443,8 @@ local function readConfig(jbeamData)
     hydrolockProtection = jbeamData.hydrolockProtection ~= false,
     waterBlockHold = jbeamData.waterBlockHold or 1.5,
     holdFloor = jbeamData.holdFloor or 0.03,
-    chargeTarget = jbeamData.chargeTarget or 0.8,
+    -- Charge mode charges up to the top of the usable window (was 0.8 of it)
+    chargeTarget = jbeamData.chargeTarget or 1.0,
 
     -- Hybrid engine start: requested wheel power by speed {km/h, kW}; between the 25th percentile and the
     -- median of the peak wheel power right after real engine starts in the logs of the real car
@@ -1606,6 +1610,9 @@ local function readConfig(jbeamData)
     warmCoastLeadRPM = jbeamData.warmCoastLeadRPM or 300,
     warmCoastMaxSoc = jbeamData.warmCoastMaxSoc or 0.97
   }
+  -- the charging tapers to 0 over the last 1 % of the window (the module's batteryRegenCoef) and sustaining stops one
+  -- sustainBand above the target, so the target sits two bands below the top: Charge mode holds at 99-99.5 % usable
+  cfg.chargeTarget = min(cfg.chargeTarget, 1 - 2 * cfg.sustainBand)
 end
 
 local function init(jbeamData)

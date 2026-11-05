@@ -29,7 +29,7 @@ The mod adds new configurations to vanilla cars. It uses their vanilla meshes; t
 ## Features
 
 - Three drive modes: Electric (engine off), Hybrid (the car decides) and Boost (engine and motor together, full system power).
-- Charge mode: in Hybrid the engine charges the battery while you drive or stand still, up to 80 % of the usable charge, then it holds. Standing still in P or N the engine runs at about 1,800 rpm and charges about 11 kW; in D at a standstill about 2 kW, without creeping.
+- Charge mode: in Hybrid the engine charges the battery while you drive or stand still, up to the top of the usable window, then it holds. Standing still in P or N the engine runs at about 1,800 rpm and charges about 11 kW; in D at a standstill about 2 kW, without creeping.
 - Regeneration when you lift off and when you brake, blended with the friction brakes. B position for stronger lift-off regeneration.
 - Kickdown at full pedal (99 %); with keyboard throttle, hold full throttle for 2 s. It can be switched off.
 - Battery sizes of 10, 13 and 18 kWh in the parts selector, each with its own mass. The petrol tank is reduced for the battery (38 L at 13 kWh).
