@@ -873,8 +873,8 @@ end
 -- doesn't rise) and the motor generates standstillChargeTorque (P / N) or standstillChargeTorqueD (drive gear), faded in
 -- over standstillChargeRampTime and drooped when the engine sags below its idle target, so it can't be stalled. Before,
 -- the engine ran at a standstill in Charge mode but nothing loaded it (the lift-off branch regenerates only while
--- rolling). Real car: "not full power, but always a bit"; no standstill charge was logged,
--- so the figures are assumed: about 5.5 kW in P (45 Nm at 1,300 rpm), 2 kW in D (25 Nm at idle).
+-- rolling). Real car: "not full power, but always a bit"; no standstill charge was logged. Provisional figures,
+-- to be measured on the real car: about 11 kW in P (60 Nm at 1,800 rpm); in D 2 kW (25 Nm at idle, assumed).
 local function standstillChargeDemand(dt, wanted, shaftAV)
   local gearIndex = electrics.values.gearIndex or 0
   local parked = gearIndex == 0
@@ -885,7 +885,14 @@ local function standstillChargeDemand(dt, wanted, shaftAV)
   end
   local idleRPM = parked and cfg.standstillChargeRPM or ((module.iceIdleAV or 84) * avToRPM)
   if wanted and parked then
-    idleReq.av = cfg.standstillChargeRPM / avToRPM
+    -- BeamNG's idle controller is proportional only (throttle = P x speed error), so under the generator load it settles
+    -- short of its target (about 1,680 rpm for 1,800 with 60 Nm), and the droop below then takes the load down. The
+    -- target is lifted by the error the load needs: the throttle for the torque the motor takes now, over P. The motor's
+    -- own torque is used, not the demand, so a pack that accepts less (cold, the top of the window) leaves no extra
+    -- throttle to rev the engine past the target.
+    local targetAV = cfg.standstillChargeRPM / avToRPM
+    local throttle = iceThrottleFor(max(-(module.motorTorque or 0), 0), targetAV) or 0
+    idleReq.av = targetAV + min(throttle / max(ice.idleControllerP or 0.01, 1e-4), cfg.standstillChargeLeadMaxRPM / avToRPM)
     idleReq.throttle = cfg.standstillChargeThrottle
   end
   if standstillChargeCoef <= 0 then
@@ -1485,12 +1492,14 @@ local function readConfig(jbeamData)
     chargeTaperBand = jbeamData.chargeTaperBand or 0.05,
     chargeTaperMin = jbeamData.chargeTaperMin or 0.3,
     -- charging at a standstill: generating torque in P / N and in a drive gear (Nm), raised idle in P / N (rpm), most
-    -- idle throttle, droop below the idle target (rpm), fade-in (s), below this road speed (km/h)
-    standstillChargeTorque = jbeamData.standstillChargeTorque or 45,
+    -- idle throttle, droop below the idle target (rpm), most lift of the idle target for the load (rpm), fade-in (s),
+    -- below this road speed (km/h)
+    standstillChargeTorque = jbeamData.standstillChargeTorque or 60,
     standstillChargeTorqueD = jbeamData.standstillChargeTorqueD or 25,
-    standstillChargeRPM = jbeamData.standstillChargeRPM or 1300,
+    standstillChargeRPM = jbeamData.standstillChargeRPM or 1800,
     standstillChargeThrottle = jbeamData.standstillChargeThrottle or 0.5,
     standstillChargeDroopRPM = jbeamData.standstillChargeDroopRPM or 250,
+    standstillChargeLeadMaxRPM = jbeamData.standstillChargeLeadMaxRPM or 300,
     standstillChargeRampTime = jbeamData.standstillChargeRampTime or 2,
     standstillChargeMaxKmh = jbeamData.standstillChargeMaxKmh or 3,
 

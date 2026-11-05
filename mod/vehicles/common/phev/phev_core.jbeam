@@ -152,9 +152,9 @@
       ],
       "chargeTaperBand": 0.05,
       "chargeTaperMin": 0.3,
-      "standstillChargeTorque": 45,
+      "standstillChargeTorque": 60,
       "standstillChargeTorqueD": 25,
-      "standstillChargeRPM": 1300,
+      "standstillChargeRPM": 1800,
       "standstillChargeThrottle": 0.5,
       "standstillChargeRampTime": 2,
       "hybridOnPowerKW": [
