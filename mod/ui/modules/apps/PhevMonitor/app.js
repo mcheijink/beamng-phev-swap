@@ -157,8 +157,9 @@ angular.module('beamng.apps')
           d.soc = Math.max(0, Math.min(100, num(e.phevSocUsable)))
           d.hold = Math.max(0, Math.min(100, num(e.phevHoldTarget)))
           d.socColor = d.soc < 10 ? '#d7263d' : (d.soc < 25 ? '#e0a21f' : '#19a974')
-          d.usableKWh = num(e.phevBatteryUsableKWh)
-          d.usableCapKWh = num(e.phevBatteryUsableCapKWh)
+          // to 0.01 kWh first: a full pack's 6.749 / 12.149 kWh read 6.7 / 12.1 next to a capacity of 6.8 / 12.2
+          d.usableKWh = Math.round(num(e.phevBatteryUsableKWh) * 100) / 100
+          d.usableCapKWh = Math.round(num(e.phevBatteryUsableCapKWh) * 100) / 100
           d.battKW = num(e.phevBatteryKW)
           const stateCode = Math.round(num(e.phevIceStateCode))
           d.iceStateName = stateNames[stateCode] || 'OFF'

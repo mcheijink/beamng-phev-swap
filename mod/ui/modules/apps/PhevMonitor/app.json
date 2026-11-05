@@ -14,7 +14,7 @@
     "min-height": "430px"
   },
   "author": "mcheijink",
-  "version": "1.0",
+  "version": "1.0.1",
   "directive": "phevMonitor",
   "category": "Dashboard",
   "isAuxiliary": false,
