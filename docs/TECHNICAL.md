@@ -333,7 +333,7 @@ These values have no measurement or published figure behind them, or were fitted
 
 | Item | Value | Status |
 |---|---|---|
-| Standstill charge in P or N | engine at 1,800 rpm, motor 60 Nm, about 11 kW; in D on the brake 25 Nm, about 2 kW | provisional: awaiting a measurement on the real car (engine speed and power in P with Charge mode on) |
+| Standstill charge in P or N | engine at 1,800 rpm, motor 60 Nm, about 11 kW; in D on the brake 25 Nm, about 2 kW | chosen value, accepted as is; not measured on the real car |
 | Power electronics and other front components | 53 kg | estimate fitted to the measured mass of the real car; no published figure |
 | First-gear torque limit | 220 Nm engine plus motor | calibrated on the published 0 to 100 km/h time; no published first-gear figure |
 | Battery management maps (charge and temperature limits, cell voltage limits) | see 1.3 | generic for liquid-cooled plug-in hybrid packs; the real car's map is not published |
