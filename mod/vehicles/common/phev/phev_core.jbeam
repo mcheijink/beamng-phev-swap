@@ -285,7 +285,7 @@
       "brakeHoldRPM": 2300,
       "brakeHoldRPMBoost": 2500,
       "brakeHoldThrottle": 0.6,
-      "warmCoastPowerKW": 12,
+      "warmCoastPowerKW": 5,
       "warmCoastMaxTorque": 80,
       "autoLightsOnHour": 18.5,
       "autoLightsOffHour": 6.5,

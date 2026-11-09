@@ -1178,7 +1178,7 @@
         "hybrid",
         "boost"
       ],
-      "defaultMode": "hybrid",
+      "defaultMode": "boost",
       "defaultSettings": [
         [
           "type"

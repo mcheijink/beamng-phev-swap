@@ -44,6 +44,8 @@ The strategy runs at physics rate in the vehicle controller. Four modes exist; t
 | Top speed | 137 km/h true; the motor power tapers to zero over the last 3 km/h up to the limit, so the car only exceeds it downhill | 222 km/h, also with kickdown | 222 km/h | – |
 | Switches by itself | only an empty battery moves the car to Hybrid (kickdown does not) | – | holds the charge at half of the usable window: the engine charges below that | charges up to the top of the usable window, then holds |
 
+**Start.** Every new start (spawn, replacing the vehicle, ignition on) begins in Boost with the engine running. The engine runs at a standstill until the first drive-off above 5 km/h; then the normal Boost rules apply. A vehicle reset keeps the mode the driver chose. The drive-mode selector starts in Boost too, with its traction and stability settings.
+
 **When the engine starts (Hybrid and Boost).** The strategy computes the requested wheel power, the pedal times what the drivetrain can deliver right now at this shaft speed. The engine starts when that exceeds a speed-dependent threshold, on kickdown (pedal at 99 %), when the charge is below the hold target, or above 130 km/h in Hybrid while the driver is pulling. It stops again when the request falls below half the threshold, and on lift-off after a delay that grows with speed.
 
 | Road speed | 0 | 50 | 70 | 100 | 120 | 140 | 160 km/h |
@@ -238,6 +240,8 @@ Real: the first engine start of a log in which the coolant was at or below 30 °
 | Oil to 40 °C | 237 s | 192 s | -45 s (-19 %) |
 | Oil to 70 °C | 383 s | run too short | – |
 | Warm coolant (median) | 92 °C | 92 °C (offline model, not a game run) | 0 |
+
+**Warm-up load point.** While the engine warms up (coolant below 70 °C) and drives with K0 closed in Hybrid or Boost, it runs at its load of best efficiency: 70 % of full load at the current speed, the peak of its efficiency map, within the warm-up torque limit. The motor charges the surplus into the battery, so the wheel torque stays the driver's. A game run in Hybrid at a steady 50 km/h from a cold start charged 5.6 kW on average, and nothing once warm. While coasting during warm-up the engine keeps firing at about 5 kW into the battery.
 | Oil to 40 / 70 / 90 °C, offline model of the final oil settings, with the engine state of the sim's own runs | 229 / 378 / 673 s (earlier cohort of cold starts) | 194 / 366 / 592 s | -35 / -12 / -81 s |
 | Coolant fall after a warm stop, 1 / 3 / 5 / 8 min | 4.0 / 11.0 / 17.0 / 24.0 K | 4.2 / 11.2 / 17.1 / 24.5 K (offline model) | +0.2 / +0.2 / +0.1 / +0.5 K |
 
@@ -346,6 +350,8 @@ These values have no measurement or published figure behind them, or were fitted
 | B position lift-off | 0.14 g | provisional; the real value is not published |
 | Hold-on brake revving | 2,300 rpm in Hybrid, 2,500 rpm in Boost | generic dual-clutch figures, not specific to this box |
 | Lift-off delays, engine start thresholds, warm-up rules | tables in 1.2 | fitted to medians and percentiles of the logs |
+| Warm-up load point (charging while the engine warms up) | engine at 70 % load, the surplus into the battery (see 2.6) | design choice; not seen in the real car's logs, which show no charging during warm-up |
+| Warm-up coasting charge | about 5 kW | from one logged case |
 | Thermal models of coolant and oil | see 2.6 | fitted with an offline copy of the game's thermal equations; the known limits are listed under 2.6 |
 | Brake light and emergency-signal thresholds | see 1.4 | taken from the structure of the braking regulations; to be verified against the consolidated text |
 | Torque vectoring of the inner front wheel | 30 % of drive torque, from 3 to 7 m/s2 | no published calibration |

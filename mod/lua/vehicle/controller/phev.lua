@@ -36,7 +36,10 @@ local gearbox = nil
 local cfg = {}
 
 local mode = MODE_HYBRID
-local keepModeAfterReset = false   -- set by reset(): the next READY keeps the mode instead of starting in Hybrid
+local keepModeAfterReset = false   -- set by reset(): the next READY keeps the mode instead of the start mode
+-- READY in Boost mode (a new start, or a reset that kept Boost mode): the engine starts and runs at a standstill until the
+-- first drive-off (by design: the engine runs from the start); then, or once another mode is chosen, the normal rules apply
+local startHold = false
 local holdTarget = 0
 local chargeFunction = false
 local iceWanted = false
@@ -78,6 +81,7 @@ local idleReq = {av = 0, throttle = 0}
 -- warm-up coasting: the engine keeps firing and the motor puts its power into the battery (fade 0..1)
 local warmCoastCoef = 0
 local warmCoastTouched = false
+local warmShiftLoad = 0.7     -- engine load of best efficiency (init: the peak of the engine's burnEfficiency map)
 local frameDt = 1 / 60
 -- B position (stronger lift-off regeneration), brake lights from regeneration and the emergency stop signal
 local bMode = false
@@ -192,6 +196,32 @@ local function setMode(newMode, quiet)
   end
 end
 
+-- READY: a new start begins in the start mode (cfg.startMode, Boost mode by default), the drive-mode selector follows
+-- (syncDriveModes). After a vehicle reset the chosen mode stays (by design: a reset keeps the chosen mode)
+local function startDriveMode()
+  if keepModeAfterReset then
+    keepModeAfterReset = false
+  else
+    chargeFunction = false
+    -- no mode carried over into a new start: setMode then sets the start mode's hold target and engine request
+    mode = nil
+    setMode(cfg.startMode, true)
+  end
+  startHold = mode == MODE_BOOST
+  if startHold then
+    iceWanted = true
+    iceOnTimer = 0
+  end
+  syncDriveModes()
+end
+
+-- the start hold ends with the first drive-off or when Boost mode is left
+local function updateStartHold(speedKmh)
+  if startHold and (mode ~= MODE_BOOST or speedKmh > cfg.startHoldReleaseKmh) then
+    startHold = false
+  end
+end
+
 -- Electric button: toggles between Electric and Hybrid
 local function toggleElectricMode()
   setMode(mode == MODE_ELECTRIC and MODE_HYBRID or MODE_ELECTRIC)
@@ -277,6 +307,15 @@ local function iceNetTorqueFor(throttle, av)
     + (ice.dynamicFriction or 0) * (ice.wearDynamicFrictionCoef or 1) * (ice.damageDynamicFrictionCoef or 1) * av
   local load = clampValue(gross / max((base - friction) * (ice.forcedInductionCoef or 1), 1e-3), 0, 1)
   return gross - friction - (ice.engineBrakeTorque or 0) * (1 - load)
+end
+
+-- Net torque of the 1.4 turbo at an engine load as BeamNG defines it (combustion torque over the net full-load torque at the
+-- live boost, combustionEngine.lua; the index of its burnEfficiency map)
+local function iceNetTorqueAtLoad(load, av)
+  local base = (ice.torqueCurve[floor(av * avToRPM)] or 0) * (ice.intakeAirDensityCoef or 1)
+  local friction = (ice.friction or 0) * (ice.wearFrictionCoef or 1) * (ice.damageFrictionCoef or 1)
+    + (ice.dynamicFriction or 0) * (ice.wearDynamicFrictionCoef or 1) * (ice.damageDynamicFrictionCoef or 1) * av
+  return load * max(base - friction, 0) * (ice.forcedInductionCoef or 1) - friction - (ice.engineBrakeTorque or 0) * (1 - load)
 end
 
 -- the throttle at which the engine delivers this net torque (the inverse of iceNetTorqueFor, by bisection:
@@ -706,7 +745,7 @@ local function updateEngineRequest(dt, pedal, brake, speedKmh, shaftAV, isBoost)
   local standing = speedKmh < 1 and pedal < 0.05
   local socRequest = not (isBoost and standing)
   local wantOn = demandPower > onPower or kickdown or beyondEV or (socRequest and deficit > cfg.deficitStart)
-    or (soc <= 0 and not liftOff) or chargeWanted
+    or (soc <= 0 and not liftOff) or chargeWanted or startHold
   -- Warm-up is graded (measured on the real car, 35 cold starts): below about 50 C coolant the engine never stops, not even
   -- while slowing down or at standstill; between 50 and 70 C it stays on while driving but may stop when
   -- slowing down below about 10 km/h or standing (stops in the logs: median 63 C, median 4 km/h).
@@ -714,6 +753,7 @@ local function updateEngineRequest(dt, pedal, brake, speedKmh, shaftAV, isBoost)
   local hardWarmUp = warmingUp and coolant < cfg.warmUpHardTemperature
   local softWarmUpHold = warmingUp and not ((liftOff or standing) and speedKmh < cfg.warmUpReleaseKmh)
   local holdOn = hardWarmUp or softWarmUpHold or (socRequest and deficit > cfg.deficitStart * 2) or kickdown or chargeWanted
+    or startHold
 
   -- reasons to stop: lift-off / braking (any speed), light load, standstill
   if liftOff then
@@ -826,6 +866,29 @@ local function motorFraction(torque, shaftAV)
   return avail > 1 and clampValue(torque / avail, -1, 0) or 0
 end
 
+-- Warm-up load-point shift (a design choice;
+-- not seen in the drive logs of the real car). While the engine warms up (warmingUp) and drives coupled in
+-- Hybrid or Boost, its torque is raised from its target to the load of best efficiency (warmShiftLoad, the peak of its
+-- burnEfficiency map: above it the efficiency falls), and the motor puts the surplus into the battery. Capped by the
+-- warm-up torque limit, the motor's generator torque, the pack's live charge limit (and warmShiftMaxKW, if set) at this
+-- shaft speed, less what already charges (genAlready); faded out over the last 1 % below warmShiftMaxSoc usable and with
+-- chargeCoef (in while the demand holds, out on lift-off and while slowing). Returns the generator torque (Nm, >= 0).
+local function warmUpShift(engineTarget, shaftAV, fullTorque, genAlready)
+  local av = max(abs(shaftAV), 50)
+  local socRoom = clampValue((cfg.warmShiftMaxSoc - usableSoc()) / 0.01, 0, 1)
+  if not (warmingUp and cfg.warmShiftEnabled) or socRoom <= 0 then
+    return 0
+  end
+  local optimum = min(iceNetTorqueAtLoad(warmShiftLoad, av), interpolate(cfg.warmUpTorqueCap, iceCoolant()) * fullTorque)
+  local limitW = min(module.chargeLimitNow or module.regenPowerLimit or 40000, module.regenPowerLimit or math.huge,
+    cfg.warmShiftMaxKW and cfg.warmShiftMaxKW * 1000 or math.huge)
+  local room = min(module.motorRegenTorqueAt(module, shaftAV), limitW / av) - (genAlready or 0)
+  local gen = clampValue(optimum - engineTarget, 0, max(room, 0)) * chargeCoef * socRoom
+  -- telemetry (updateGFX sets it to 0 at the start of each frame)
+  electrics.values.phevWarmShiftKW = gen * abs(shaftAV) * 0.001
+  return gen
+end
+
 -- Lift-off / braking with the engine coupled (Hybrid, Boost, warm-up): the engine goes to fuel cut and drags; between
 -- pedal 0 and coastPedal it is given part of its drag back as torque (net -drag x coastCoef), so the wheel torque
 -- runs continuously into the drive range. The motor regenerates the rest of the lift-off target (regenDemand).
@@ -873,8 +936,9 @@ end
 -- doesn't rise) and the motor generates standstillChargeTorque (P / N) or standstillChargeTorqueD (drive gear), faded in
 -- over standstillChargeRampTime and drooped when the engine sags below its idle target, so it can't be stalled. Before,
 -- the engine ran at a standstill in Charge mode but nothing loaded it (the lift-off branch regenerates only while
--- rolling). Real car: "not full power, but always a bit"; no standstill charge was logged. Provisional figures,
--- to be measured on the real car: about 11 kW in P (60 Nm at 1,800 rpm); in D 2 kW (25 Nm at idle, assumed).
+-- rolling). Real car: "not full power, but always a bit"; no standstill charge was logged. Chosen figures, not measured on
+-- the real car: about 11 kW in P
+-- (60 Nm at 1,800 rpm); in D 2 kW (25 Nm at idle, assumed).
 local function standstillChargeDemand(dt, wanted, shaftAV)
   local gearIndex = electrics.values.gearIndex or 0
   local parked = gearIndex == 0
@@ -974,8 +1038,10 @@ local function hybridCoupledSplit(dt, pedal, rawPedal, coastCoef, brake, speedKm
   -- a cold engine's torque limit (warm-up); the motor fills the rest
   engineTarget = min(engineTarget, interpolate(cfg.warmUpTorqueCap, iceCoolant()) * fullTorque)
   engineShare = demandTorque > 1 and engineTarget / demandTorque or 1
-  local fill = max(demandTorque - engineTorque, 0)
-  return fillSmoother:get(motorFraction(fill, shaftAV), dt), iceFactorAbs(engineTarget, rawPedal, shaftAV)
+  -- warm-up load-point shift: the engine carries gen more, the motor generates it (warmUpShift)
+  local gen = warmUpShift(engineTarget, shaftAV, fullTorque, 0)
+  local fill = max(demandTorque + gen - engineTorque, 0) - gen
+  return fillSmoother:get(motorFraction(fill, shaftAV), dt), iceFactorAbs(engineTarget + gen, rawPedal, shaftAV)
 end
 
 -- Boost with the engine coupled and the pedal in the drive range: the pedal asks for a share of the system torque
@@ -1009,6 +1075,10 @@ local function phevCoupledDrive(dt, pedal, rawPedal, shaftAV, kickdown)
     local warmCap = interpolate(cfg.warmUpTorqueCap, iceCoolant())
     local regenAvail = module.motorRegenTorqueAt(module, shaftAV)
     gen = min(cfg.boostChargeTorque * clampValue(deficit / 0.01, 0, 1) * chargeCoef, max(fullIce * warmCap - engineTarget, 0), regenAvail)
+  end
+  if not kickdown then
+    -- warm-up load-point shift on top of the hold charging (warmUpShift)
+    gen = gen + warmUpShift(engineTarget + gen, shaftAV, fullIce, gen)
   end
   local motorTorque = boost + max(engineTarget + gen - deliveredEngineTorque, 0) - gen
   engineShare = target > 1 and engineTarget / target or 1
@@ -1206,6 +1276,44 @@ local function brakeHoldLaunch(forwardGear, speedKmh, brake, rawPedal)
   return brakeHold
 end
 
+-- warm-up: an engine that started cold keeps running until it is warm (Hybrid and Boost)
+-- (counts from the moment the engine fires, also while K0 is still synchronising and closing)
+-- Only once per drive: after the engine has been warm it never runs (or restarts) just to keep warm; when it
+-- has cooled down later, only the normal reasons start it again.
+-- (updateWarmUp and publishState are separate functions to keep updateGFX well below LuaJIT's limit of 60 upvalues:
+-- test_luajit_compile.py)
+local function updateWarmUp()
+  local iceActive = module.k0State == "sync" or module.k0State == "close" or module.k0State == "running"
+  if not iceIsCold() then
+    warmingUp = false
+    warmedUp = true
+  elseif iceActive and not warmedUp then
+    warmingUp = true
+  end
+  electrics.values.phevWarmingUp = warmingUp and 1 or 0
+end
+
+-- end of the frame: the engine start rule (with the start hold of a Boost start) and the strategy's state in electrics
+local function publishState(speedKmh)
+  updateStartHold(speedKmh)
+  -- The car pulls away electrically: a stopped engine is only started once the shaft turns fast enough for its
+  -- idle in the current gear (about 8 km/h in 1st). Kickdown and charging at standstill start it at once.
+  local engineStopped = module.k0State == "off"
+  local shaftReady = (module.outputAV1 or 0) >= (module.iceIdleAV or 84) * cfg.startShaftIdleRatio
+  local startAllowed = not engineStopped or shaftReady or kickdownActive or standstillChargeWanted or chargeFunction and speedKmh < 1
+    or startHold
+  module.iceRequested = iceWanted and mode ~= MODE_ELECTRIC and startAllowed and not water.block
+
+  electrics.values.phevMode = mode
+  electrics.values.phevHoldTarget = (chargeFunction and cfg.chargeTarget or holdTarget) * 100
+  electrics.values.phevChargeFunction = chargeFunction and 1 or 0
+  electrics.values.phevEngineShare = engineShare
+  electrics.values.phevKickdown = kickdownActive and 1 or 0
+  electrics.values.phevKickdownEnabled = kickdownEnabled and 1 or 0
+  electrics.values.phevBMode = bMode and 1 or 0
+  electrics.values.phevTvNm = tv.active
+end
+
 local function updateGFX(dt)
   if not module or not ice then
     return
@@ -1232,7 +1340,7 @@ local function updateGFX(dt)
   -- the gearbox takes kickdown from here, so strategy and box always agree
   electrics.values.phevKickdown = kickdownActive and 1 or 0
   local brake = clampValue(electrics.values.brake or 0, 0, 1) -- the driver's brake as set by the vehicle controller
-  -- (math.abs: updateGFX is at LuaJIT's limit of 60 upvalues, a local alias would push it over)
+  -- (math.abs: keeps updateGFX's upvalues down; LuaJIT allows 60, test_luajit_compile.py)
   local speedKmh = math.abs(electrics.values.wheelspeed or 0) * 3.6
 
   -- top speed: a gentle proportional limiter over the last few km/h (BeamNG's ECU limiter PID pumps the power
@@ -1250,18 +1358,9 @@ local function updateGFX(dt)
   updateRegenSlip(dt)
   updateDeliveredEngineTorque(dt)
 
-  -- the car starts in Hybrid (by design: the default start mode); the drive-mode selector follows (syncDriveModes).
-  -- After a vehicle reset the chosen mode stays (by design: a reset keeps the chosen mode)
   local ready = module.systemReady
   if ready and not lastReady then
-    if keepModeAfterReset then
-      keepModeAfterReset = false
-    else
-      mode = MODE_HYBRID
-      electrics.values.phevMode = mode
-      chargeFunction = false
-    end
-    syncDriveModes()
+    startDriveMode()
   end
   lastReady = ready
 
@@ -1278,17 +1377,7 @@ local function updateGFX(dt)
   -- 140 km/h (workshop manual); here kickdown gives the motor's full power and the motor tapers to zero towards evMaxSpeedKmh
   -- (evSpeedTaperKmh), so the car only exceeds it downhill. Only an empty battery still moves it to Hybrid (above).
 
-  -- warm-up: an engine that started cold keeps running until it is warm (Hybrid and Boost)
-  -- (counts from the moment the engine fires, also while K0 is still synchronising and closing)
-  local iceActive = module.k0State == "sync" or module.k0State == "close" or module.k0State == "running"
-  -- Only once per drive: after the engine has been warm it never runs (or restarts) just to keep warm; when it
-  -- has cooled down later, only the normal reasons start it again.
-  if not iceIsCold() then
-    warmingUp = false
-    warmedUp = true
-  elseif iceActive and not warmedUp then
-    warmingUp = true
-  end
+  updateWarmUp()
 
   local motorDemand = 0
   local iceThrottleFactor = 1
@@ -1296,6 +1385,7 @@ local function updateGFX(dt)
   idleReq.av, idleReq.throttle = 0, 0
   frameDt = dt
   warmCoastTouched = false
+  electrics.values.phevWarmShiftKW = 0
   -- B position: stronger lift-off regeneration in every mode (forward gears)
   local decelD = bMode and cfg.coastDecelB or cfg.coastDecelD
   local decelBoost = bMode and cfg.coastDecelB or cfg.coastDecelBoost
@@ -1410,25 +1500,10 @@ local function updateGFX(dt)
   updateAutoLights(dt)
 
 
-  -- The car pulls away electrically: a stopped engine is only started once the shaft turns fast enough for its
-  -- idle in the current gear (about 8 km/h in 1st). Kickdown and charging at standstill start it at once.
-  local engineStopped = module.k0State == "off"
-  local shaftReady = (module.outputAV1 or 0) >= (module.iceIdleAV or 84) * cfg.startShaftIdleRatio
-  local startAllowed = not engineStopped or shaftReady or kickdownActive or standstillChargeWanted or chargeFunction and speedKmh < 1
-  module.iceRequested = iceWanted and mode ~= MODE_ELECTRIC and startAllowed and not water.block
+  publishState(speedKmh)
   module.motorDemand = clampValue(motorDemand, -1, 1)
   module.iceThrottleFactor = iceThrottleFactor
   module.systemCapActive = true
-
-  electrics.values.phevMode = mode
-  electrics.values.phevHoldTarget = (chargeFunction and cfg.chargeTarget or holdTarget) * 100
-  electrics.values.phevChargeFunction = chargeFunction and 1 or 0
-  electrics.values.phevEngineShare = engineShare
-  electrics.values.phevWarmingUp = warmingUp and 1 or 0
-  electrics.values.phevKickdown = kickdownActive and 1 or 0
-  electrics.values.phevKickdownEnabled = kickdownEnabled and 1 or 0
-  electrics.values.phevBMode = bMode and 1 or 0
-  electrics.values.phevTvNm = tv.active
 end
 
 ------------------------------------------------------------------------------------------------
@@ -1516,6 +1591,8 @@ local function readConfig(jbeamData)
     boostHoldTarget = jbeamData.boostHoldTarget or 0.5,
     -- a stopped engine starts once the shaft turns at this share of engine idle (pull-away is electric)
     startShaftIdleRatio = jbeamData.startShaftIdleRatio or 1.0,
+    -- the engine start hold of a Boost mode start (startHold) ends above this road speed (the first drive-off)
+    startHoldReleaseKmh = jbeamData.startHoldReleaseKmh or 5,
     -- graded warm-up: below this coolant temperature the engine never stops; above it, it may stop when slowing
     -- down below warmUpReleaseKmh or at standstill (until warmUpTemperature)
     warmUpHardTemperature = jbeamData.warmUpHardTemperature or 50,
@@ -1604,15 +1681,49 @@ local function readConfig(jbeamData)
     brakeHoldMaxKmh = jbeamData.brakeHoldMaxKmh or 2,
     -- warm-up coasting: engine power into the battery (kW), most engine torque (Nm), fade-in (s), the idle target's lead
     -- over the engine speed (rpm), the usable charge up to which it charges
-    warmCoastPowerKW = jbeamData.warmCoastPowerKW or 12,
+    warmCoastPowerKW = jbeamData.warmCoastPowerKW or 5,
     warmCoastMaxTorque = jbeamData.warmCoastMaxTorque or 80,
     warmCoastRampTime = jbeamData.warmCoastRampTime or 1.0,
     warmCoastLeadRPM = jbeamData.warmCoastLeadRPM or 300,
-    warmCoastMaxSoc = jbeamData.warmCoastMaxSoc or 0.97
+    warmCoastMaxSoc = jbeamData.warmCoastMaxSoc or 0.97,
+    -- warm-up load-point shift (warmUpShift; a design choice, not seen in the drive logs): on / off, the engine load it raises the
+    -- engine to (nil: the peak of the engine's burnEfficiency map), an extra power cap (kW, nil: the pack's charge limit
+    -- only) and the usable charge up to which it charges
+    warmShiftEnabled = jbeamData.warmShiftEnabled ~= false,
+    warmShiftLoad = jbeamData.warmShiftLoad,
+    warmShiftMaxKW = jbeamData.warmShiftMaxKW,
+    warmShiftMaxSoc = jbeamData.warmShiftMaxSoc or 0.97
   }
   -- the charging tapers to 0 over the last 1 % of the window (the module's batteryRegenCoef) and sustaining stops one
   -- sustainBand above the target, so the target sits two bands below the top: Charge mode holds at 99-99.5 % usable
   cfg.chargeTarget = min(cfg.chargeTarget, 1 - 2 * cfg.sustainBand)
+  -- the mode of a new start (spawn, ignition on): Boost mode by default
+  -- (by design: the sporty mode by default); the jbeam may name another one with the drive-mode
+  -- selector's parameter names: startMode = "Electric" | "Hybrid" | "Boost"
+  cfg.startMode = MODE_BY_PARAMETER[jbeamData.startMode] or MODE_BOOST
+end
+
+-- the strategy's filters, timers and lamp state back to their start values (from init; a separate function keeps init
+-- well below LuaJIT's limit of 60 upvalues: test_luajit_compile.py)
+local function resetStrategyState()
+  regenSlipHold = 0
+  regenSlipCoef = 1
+  coastWheelTorque = 0
+  pedalFiltered = 0
+  coasting = true
+  chargeCoef = 0
+  accelSmoothed = 0
+  lastSpeedMs = nil
+  k0DragFiltered = 0
+  fillSmoother = newTemporalSmoothing(4, 6)
+  speedLimitCoef = 1
+  standstillChargeCoef = 0
+  idleReq.av, idleReq.throttle = 0, 0
+  warmCoastCoef = 0
+  bMode = false
+  lights.regenOn, lights.ess, lights.essTimer, lights.hazard, lights.lastAir, lights.decel = false, false, 0, false, nil, 0
+  autoLights.timer, autoLights.set, autoLights.override, autoLights.lastReady = 0, false, false, false
+  speedLimitSmoother = newTemporalSmoothing(0.6, 0.6, nil, 1)
 end
 
 local function init(jbeamData)
@@ -1679,15 +1790,7 @@ local function init(jbeamData)
       elseif n == "RL" then tv.rearL = wd elseif n == "RR" then tv.rearR = wd end
     end
   end
-  regenSlipHold = 0
-  regenSlipCoef = 1
-  coastWheelTorque = 0
-  pedalFiltered = 0
-  coasting = true
-  chargeCoef = 0
-  accelSmoothed = 0
-  lastSpeedMs = nil
-  k0DragFiltered = 0
+  resetStrategyState()
   -- display names of the modes and of the charge function (a host car sets modeLabels = [electric, hybrid, boost] and
   -- chargeLabel in its data; the drive-mode part and the key actions keep the internal names)
   local labels = type(jbeamData.modeLabels) == "table" and jbeamData.modeLabels or {}
@@ -1714,16 +1817,19 @@ local function init(jbeamData)
       break
     end
   end
-  fillSmoother = newTemporalSmoothing(4, 6)
-  speedLimitCoef = 1
-  standstillChargeCoef = 0
   module.chargeIdleAV = 0
-  idleReq.av, idleReq.throttle = 0, 0
-  warmCoastCoef = 0
-  bMode = false
-  lights.regenOn, lights.ess, lights.essTimer, lights.hazard, lights.lastAir, lights.decel = false, false, 0, false, nil, 0
-  autoLights.timer, autoLights.set, autoLights.override, autoLights.lastReady = 0, false, false, false
-  speedLimitSmoother = newTemporalSmoothing(0.6, 0.6, nil, 1)
+  -- the warm-up load-point shift's engine load: the jbeam's, else the peak of the engine's burnEfficiency map (BeamNG
+  -- keeps it as 1 / efficiency by load in %), else 0.7
+  warmShiftLoad = cfg.warmShiftLoad or 0.7
+  if not cfg.warmShiftLoad and ice and type(ice.invBurnEfficiencyTable) == "table" then
+    local best
+    for k = 1, 100 do
+      local inv = ice.invBurnEfficiencyTable[k]
+      if type(inv) == "number" and (not best or inv < best - 1e-9) then
+        best, warmShiftLoad = inv, k / 100
+      end
+    end
+  end
 
   water.block, water.timer = false, 0
   deliveredEngineTorque, engineTorqueFiltered, kbdFloorTimer, kickdownActive = 0, nil, 0, false
@@ -1740,6 +1846,7 @@ local function init(jbeamData)
   warmedUp = false
   engineShare = 1
   lastReady = false
+  startHold = false
   electrics.values.phevMode = mode
 end
 
@@ -1747,7 +1854,7 @@ local function reset(jbeamData)
   sustainCharging = false
   local keptMode = mode
   init(jbeamData)
-  -- a reset keeps the driver's mode (with its hold target and engine request); a new start begins in Hybrid
+  -- a reset keeps the driver's mode (with its hold target and engine request); a new start begins in the start mode
   setMode(keptMode, true)
   keepModeAfterReset = true
 end
